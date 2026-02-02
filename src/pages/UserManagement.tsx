@@ -13,6 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { UserDialog } from "@/components/dialogs/UserDialog";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: string;
@@ -23,7 +26,7 @@ interface User {
   avatar: string;
 }
 
-const users: User[] = [
+const initialUsers: User[] = [
   { id: "1", name: "Alex Thompson", email: "alex@nexus.com", role: "SUPER ADMIN", status: "Active", avatar: "A" },
   { id: "2", name: "Sarah Miller", email: "sarah@nexus.com", role: "ADMIN", status: "Inactive", avatar: "S" },
   { id: "3", name: "John Doe", email: "john@nexus.com", role: "ADMIN", status: "Active", avatar: "J" },
@@ -32,12 +35,66 @@ const users: User[] = [
 
 const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [users, setUsers] = useState(initialUsers);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const { toast } = useToast();
 
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleAddUser = () => {
+    setDialogMode("create");
+    setSelectedUser(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setDialogMode("edit");
+    setSelectedUser(user);
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (user: User) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleUserSubmit = (data: { name: string; email: string; password: string }) => {
+    if (dialogMode === "create") {
+      const newUser: User = {
+        id: Date.now().toString(),
+        name: data.name,
+        email: data.email,
+        role: "ADMIN",
+        status: "Active",
+        avatar: data.name.charAt(0).toUpperCase(),
+      };
+      setUsers([...users, newUser]);
+      toast({ title: "User created", description: `${data.name} has been added successfully.` });
+    } else if (selectedUser) {
+      setUsers(users.map((u) =>
+        u.id === selectedUser.id
+          ? { ...u, name: data.name, email: data.email, avatar: data.name.charAt(0).toUpperCase() }
+          : u
+      ));
+      toast({ title: "User updated", description: `${data.name} has been updated successfully.` });
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (userToDelete) {
+      setUsers(users.filter((u) => u.id !== userToDelete.id));
+      toast({ title: "User deleted", description: `${userToDelete.name} has been removed.` });
+      setUserToDelete(null);
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -57,7 +114,7 @@ const UserManagement = () => {
             className="pl-10"
           />
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleAddUser}>
           <UserPlus className="h-4 w-4" />
           Add User
         </Button>
@@ -109,11 +166,21 @@ const UserManagement = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleEditUser(user)}
+                    >
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
                     {user.role !== "SUPER ADMIN" && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleDeleteClick(user)}
+                      >
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     )}
@@ -124,6 +191,24 @@ const UserManagement = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* User Dialog */}
+      <UserDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        mode={dialogMode}
+        user={selectedUser || undefined}
+        onSubmit={handleUserSubmit}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete User"
+        itemName={userToDelete?.name || ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };
