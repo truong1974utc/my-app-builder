@@ -13,6 +13,7 @@ import DocumentManagement from "./pages/DocumentManagement";
 import ContentPages from "./pages/ContentPages";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import { RoutePaths } from './config/route';
 
 const queryClient = new QueryClient();
 
@@ -23,15 +24,15 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path={RoutePaths.LOGIN} element={<LoginPage />} />
           <Route element={<AdminLayout />}>
-            <Route path="/" element={<DashboardOverview />} />
-            <Route path="/users" element={<UserManagement />} />
-            <Route path="/categories" element={<CategoryManagement />} />
-            <Route path="/products" element={<ProductManagement />} />
-            <Route path="/documents" element={<DocumentManagement />} />
-            <Route path="/content-pages" element={<ContentPages />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path={RoutePaths.DASHBOARD} element={<DashboardOverview />} />
+            <Route path={RoutePaths.USERS} element={<UserManagement />} />
+            <Route path={RoutePaths.CATEGORIES} element={<CategoryManagement />} />
+            <Route path={RoutePaths.PRODUCTS} element={<ProductManagement />} />
+            <Route path={RoutePaths.DOCUMENTS} element={<DocumentManagement />} />
+            <Route path={RoutePaths.CONTENT_PAGES} element={<ContentPages />} />
+            <Route path={RoutePaths.SETTINGS} element={<SettingsPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
