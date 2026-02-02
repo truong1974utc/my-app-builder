@@ -12,6 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CategoryDialog } from "@/components/dialogs/CategoryDialog";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Category {
   id: string;
@@ -20,7 +23,7 @@ interface Category {
   products: number;
 }
 
-const categories: Category[] = [
+const initialCategories: Category[] = [
   { id: "1", name: "Electronics", description: "Modern gadgets and computing devices", products: 124 },
   { id: "2", name: "Accessories", description: "Peripheral items and add-ons", products: 56 },
   { id: "3", name: "Audio", description: "Headphones, speakers and sound systems", products: 89 },
@@ -31,12 +34,64 @@ const categories: Category[] = [
 
 const CategoryManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [categories, setCategories] = useState(initialCategories);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const { toast } = useToast();
 
   const filteredCategories = categories.filter(
     (cat) =>
       cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cat.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleAddCategory = () => {
+    setDialogMode("create");
+    setSelectedCategory(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setDialogMode("edit");
+    setSelectedCategory(category);
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCategorySubmit = (data: { name: string; description: string }) => {
+    if (dialogMode === "create") {
+      const newCategory: Category = {
+        id: Date.now().toString(),
+        name: data.name,
+        description: data.description,
+        products: 0,
+      };
+      setCategories([...categories, newCategory]);
+      toast({ title: "Category created", description: `${data.name} has been added successfully.` });
+    } else if (selectedCategory) {
+      setCategories(categories.map((c) =>
+        c.id === selectedCategory.id
+          ? { ...c, name: data.name, description: data.description }
+          : c
+      ));
+      toast({ title: "Category updated", description: `${data.name} has been updated successfully.` });
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (categoryToDelete) {
+      setCategories(categories.filter((c) => c.id !== categoryToDelete.id));
+      toast({ title: "Category deleted", description: `${categoryToDelete.name} has been removed.` });
+      setCategoryToDelete(null);
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -56,7 +111,7 @@ const CategoryManagement = () => {
             className="pl-10"
           />
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleAddCategory}>
           <Plus className="h-4 w-4" />
           Add Category
         </Button>
@@ -94,10 +149,20 @@ const CategoryManagement = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleEditCategory(category)}
+                    >
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleDeleteClick(category)}
+                    >
                       <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </div>
@@ -107,6 +172,24 @@ const CategoryManagement = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Category Dialog */}
+      <CategoryDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        mode={dialogMode}
+        category={selectedCategory || undefined}
+        onSubmit={handleCategorySubmit}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Category"
+        itemName={categoryToDelete?.name || ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };

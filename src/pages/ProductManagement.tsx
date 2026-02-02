@@ -4,6 +4,9 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ProductDialog } from "@/components/dialogs/ProductDialog";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -17,7 +20,7 @@ interface Product {
   featured: boolean;
 }
 
-const products: Product[] = [
+const initialProducts: Product[] = [
   {
     id: "1",
     name: "MacBook Pro M3",
@@ -83,6 +86,11 @@ const products: Product[] = [
 
 const ProductManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [products, setProducts] = useState(initialProducts);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const { toast } = useToast();
 
   const filteredProducts = products.filter(
     (product) =>
@@ -100,6 +108,38 @@ const ProductManagement = () => {
         return "bg-destructive text-destructive-foreground";
       default:
         return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const handleAddProduct = () => {
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleProductSubmit = (data: any) => {
+    const newProduct: Product = {
+      id: Date.now().toString(),
+      name: data.name || "New Product",
+      category: data.category?.toUpperCase() || "ELECTRONICS",
+      price: parseFloat(data.sellingPrice) || 0,
+      stock: parseInt(data.stock) || 0,
+      status: parseInt(data.stock) > 10 ? "IN STOCK" : parseInt(data.stock) > 0 ? "LOW STOCK" : "OUT OF STOCK",
+      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=300&fit=crop",
+      featured: data.featured,
+    };
+    setProducts([...products, newProduct]);
+    toast({ title: "Product created", description: `${newProduct.name} has been added successfully.` });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (productToDelete) {
+      setProducts(products.filter((p) => p.id !== productToDelete.id));
+      toast({ title: "Product deleted", description: `${productToDelete.name} has been removed.` });
+      setProductToDelete(null);
     }
   };
 
@@ -127,7 +167,7 @@ const ProductManagement = () => {
             Filters
           </Button>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleAddProduct}>
           <Plus className="h-4 w-4" />
           Add Product
         </Button>
@@ -202,7 +242,12 @@ const ProductManagement = () => {
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   <Pencil className="h-4 w-4 text-muted-foreground" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleDeleteClick(product)}
+                >
                   <Trash2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
@@ -210,6 +255,22 @@ const ProductManagement = () => {
           </div>
         ))}
       </div>
+
+      {/* Product Dialog */}
+      <ProductDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleProductSubmit}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Product"
+        itemName={productToDelete?.name || ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };

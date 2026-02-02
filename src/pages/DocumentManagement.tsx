@@ -10,6 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DocumentDialog } from "@/components/dialogs/DocumentDialog";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Document {
   id: string;
@@ -20,17 +23,55 @@ interface Document {
   updatedAt: string;
 }
 
-const documents: Document[] = [
+const initialDocuments: Document[] = [
   { id: "1", name: "Q3 Financial Report", type: "PDF File", size: "2.4 MB", owner: "Alex Thompson", updatedAt: "2024-03-15" },
   { id: "2", name: "Product Roadmap 2024", type: "DOCX File", size: "1.1 MB", owner: "Sarah Miller", updatedAt: "2024-03-12" },
 ];
 
 const DocumentManagement = () => {
+  const [documents, setDocuments] = useState(initialDocuments);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
+  const { toast } = useToast();
+
   const getFileIcon = (type: string) => {
     if (type.includes("PDF")) {
       return <FileText className="h-5 w-5 text-destructive" />;
     }
     return <FileSpreadsheet className="h-5 w-5 text-info" />;
+  };
+
+  const handleUpload = () => {
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (doc: Document) => {
+    setDocumentToDelete(doc);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDocumentSubmit = (data: { file: File | null; title: string }) => {
+    if (data.file) {
+      const newDocument: Document = {
+        id: Date.now().toString(),
+        name: data.title,
+        type: data.file.type.includes("pdf") ? "PDF File" : "DOCX File",
+        size: `${(data.file.size / 1024 / 1024).toFixed(1)} MB`,
+        owner: "Alex Thompson",
+        updatedAt: new Date().toISOString().split("T")[0],
+      };
+      setDocuments([...documents, newDocument]);
+      toast({ title: "Document uploaded", description: `${data.title} has been uploaded successfully.` });
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (documentToDelete) {
+      setDocuments(documents.filter((d) => d.id !== documentToDelete.id));
+      toast({ title: "Document deleted", description: `${documentToDelete.name} has been removed.` });
+      setDocumentToDelete(null);
+    }
   };
 
   return (
@@ -43,7 +84,7 @@ const DocumentManagement = () => {
       {/* Header with Upload */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-foreground">Recent Documents</h2>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleUpload}>
           <Upload className="h-4 w-4" />
           Upload New
         </Button>
@@ -86,7 +127,12 @@ const DocumentManagement = () => {
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleDeleteClick(doc)}
+                    >
                       <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -99,6 +145,22 @@ const DocumentManagement = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Upload Dialog */}
+      <DocumentDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleDocumentSubmit}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Document"
+        itemName={documentToDelete?.name || ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };
