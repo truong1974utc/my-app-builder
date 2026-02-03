@@ -89,22 +89,14 @@ export function SettingsDialog({
               </p>
             </div>
           </div>
-<<<<<<< HEAD
           {/* <Button
-=======
-          <Button
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
             variant="ghost"
             size="icon"
             className="h-9 w-9"
             onClick={() => onOpenChange(false)}
           >
             <X className="h-5 w-5" />
-<<<<<<< HEAD
           </Button> */}
-=======
-          </Button>
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">

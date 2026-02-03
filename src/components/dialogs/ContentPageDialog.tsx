@@ -1,17 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-<<<<<<< HEAD
 import {
   LayoutGrid,
   X,
   Globe,
   Image as ImageIcon,
-=======
-import { 
-  LayoutGrid, 
-  X, 
-  Globe, 
-  Image as ImageIcon, 
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
   Upload,
   Bold,
   Italic,
@@ -22,18 +14,9 @@ import {
   Undo,
   Redo,
   CheckCircle,
-<<<<<<< HEAD
   FileText,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-=======
-  FileText
-} from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -54,13 +37,9 @@ interface ContentPageDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   page: ContentPage | null;
-<<<<<<< HEAD
   onSubmit: (
     data: Omit<ContentPage, "id" | "createdAt" | "updatedAt"> & { id?: string },
   ) => void;
-=======
-  onSubmit: (data: Omit<ContentPage, "id" | "createdAt" | "updatedAt"> & { id?: string }) => void;
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
 }
 
 export function ContentPageDialog({
@@ -156,22 +135,14 @@ export function ContentPageDialog({
               </p>
             </div>
           </div>
-<<<<<<< HEAD
           {/* <Button
-=======
-          <Button
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
             variant="ghost"
             size="icon"
             className="h-9 w-9"
             onClick={() => onOpenChange(false)}
           >
             <X className="h-5 w-5" />
-<<<<<<< HEAD
           </Button> */}
-=======
-          </Button>
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-1 overflow-hidden">
@@ -302,13 +273,9 @@ export function ContentPageDialog({
 
               {/* URL Slug */}
               <div className="space-y-2">
-<<<<<<< HEAD
                 <Label className="text-xs text-muted-foreground">
                   PERMANENT URL SLUG
                 </Label>
-=======
-                <Label className="text-xs text-muted-foreground">PERMANENT URL SLUG</Label>
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
                 <div className="flex items-center gap-1 text-sm">
                   <span className="text-muted-foreground">/pages/</span>
                   <Input
@@ -322,25 +289,17 @@ export function ContentPageDialog({
 
               {/* Page Status */}
               <div className="space-y-2">
-<<<<<<< HEAD
                 <Label className="text-xs text-muted-foreground">
                   PAGE STATUS
                 </Label>
-=======
-                <Label className="text-xs text-muted-foreground">PAGE STATUS</Label>
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
                 <div className="flex gap-2">
                   <Button
                     type="button"
                     variant={status === "PUBLISHED" ? "default" : "outline"}
                     className={cn(
                       "flex-1 gap-2",
-<<<<<<< HEAD
                       status === "PUBLISHED" &&
                         "bg-success hover:bg-success/90",
-=======
-                      status === "PUBLISHED" && "bg-success hover:bg-success/90"
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
                     )}
                     onClick={() => setStatus("PUBLISHED")}
                   >
@@ -424,13 +383,9 @@ export function ContentPageDialog({
                   className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
                 >
                   <Upload className="h-6 w-6 text-muted-foreground mb-2" />
-<<<<<<< HEAD
                   <span className="text-sm text-muted-foreground">
                     Click to upload
                   </span>
-=======
-                  <span className="text-sm text-muted-foreground">Click to upload</span>
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
                 </div>
               )}
             </div>
@@ -439,15 +394,11 @@ export function ContentPageDialog({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-6 border-t">
-<<<<<<< HEAD
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-=======
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
             Discard Changes
           </Button>
           <Button onClick={handleSubmit}>

@@ -75,22 +75,14 @@ export function DocumentPreviewDialog({
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <Download className="h-4 w-4" />
             </Button>
-<<<<<<< HEAD
             {/* <Button
-=======
-            <Button
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
               variant="default"
               size="icon"
               className="h-9 w-9 rounded-full bg-foreground hover:bg-foreground/90"
               onClick={() => onOpenChange(false)}
             >
               <X className="h-4 w-4 text-background" />
-<<<<<<< HEAD
             </Button> */}
-=======
-            </Button>
->>>>>>> 7ff2db269d6f8e780f016f7ffc439452cdee141e
           </div>
         </div>
 
