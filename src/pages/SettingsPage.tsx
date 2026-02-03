@@ -11,25 +11,83 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SettingsDialog } from "@/components/dialogs/SettingsDialog";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Setting {
   id: string;
   key: string;
   description: string;
+  value?: string;
 }
 
-const settings: Setting[] = [
-  { id: "1", key: "auth_session_timeout", description: "Duration of an active user session." },
+const initialSettings: Setting[] = [
+  { 
+    id: "1", 
+    key: "auth_session_timeout", 
+    description: "Duration of an active user session.",
+    value: '{\n  "timeout": 3600000\n}'
+  },
 ];
 
 const SettingsPage = () => {
+  const [settings, setSettings] = useState(initialSettings);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedSetting, setSelectedSetting] = useState<Setting | null>(null);
+  const [settingToDelete, setSettingToDelete] = useState<Setting | null>(null);
+  const { toast } = useToast();
 
   const filteredSettings = settings.filter(
     (setting) =>
       setting.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
       setting.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleCreateClick = () => {
+    setSelectedSetting(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditClick = (setting: Setting) => {
+    setSelectedSetting(setting);
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (setting: Setting) => {
+    setSettingToDelete(setting);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSubmit = (data: Omit<Setting, "id"> & { id?: string }) => {
+    if (data.id) {
+      // Update existing
+      setSettings(settings.map((s) => 
+        s.id === data.id ? { ...s, ...data } : s
+      ));
+      toast({ title: "Setting updated", description: `${data.key} has been updated.` });
+    } else {
+      // Create new
+      const newSetting: Setting = {
+        id: Date.now().toString(),
+        key: data.key,
+        description: data.description,
+        value: data.value,
+      };
+      setSettings([...settings, newSetting]);
+      toast({ title: "Setting created", description: `${data.key} has been added.` });
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (settingToDelete) {
+      setSettings(settings.filter((s) => s.id !== settingToDelete.id));
+      toast({ title: "Setting deleted", description: `${settingToDelete.key} has been removed.` });
+      setSettingToDelete(null);
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -49,7 +107,7 @@ const SettingsPage = () => {
             className="pl-10"
           />
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleCreateClick}>
           <Plus className="h-4 w-4" />
           Add Setting
         </Button>
@@ -81,10 +139,20 @@ const SettingsPage = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleEditClick(setting)}
+                    >
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleDeleteClick(setting)}
+                    >
                       <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </div>
@@ -94,6 +162,23 @@ const SettingsPage = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        setting={selectedSetting}
+        onSubmit={handleSubmit}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Setting"
+        itemName={settingToDelete?.key || ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };
