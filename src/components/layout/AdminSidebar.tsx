@@ -21,11 +21,16 @@ const menuItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  className?: string;
+  onNavClick?: () => void;
+}
+
+export function AdminSidebar({ className, onNavClick }: AdminSidebarProps) {
   const location = useLocation();
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar">
+    <aside className={cn("flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar", className)}>
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
@@ -42,6 +47,7 @@ export function AdminSidebar() {
             <NavLink
               key={item.title}
               to={item.url}
+              onClick={onNavClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
                 isActive
