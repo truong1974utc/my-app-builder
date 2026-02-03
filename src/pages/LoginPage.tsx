@@ -4,12 +4,14 @@ import { Mail, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +47,7 @@ const LoginPage = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@nexus.com"
+                placeholder="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12"
@@ -63,7 +65,7 @@ const LoginPage = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="h-12"
@@ -74,6 +76,7 @@ const LoginPage = () => {
 
           {/* Submit Button */}
           <Button 
+            onClick={() => login(email, password)}
             type="submit" 
             className="w-full h-12 text-base font-medium"
             disabled={isLoading}

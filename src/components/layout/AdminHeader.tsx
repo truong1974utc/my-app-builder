@@ -7,12 +7,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AdminHeaderProps {
   onMenuClick?: () => void;
 }
 
 export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
+  const { logout } = useAuth()
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 md:px-6">
       <Button
@@ -39,7 +41,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem>Profile</DropdownMenuItem>
           <DropdownMenuItem>Account Settings</DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive">Logout</DropdownMenuItem>
+          <DropdownMenuItem onClick={logout} className="text-destructive">Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

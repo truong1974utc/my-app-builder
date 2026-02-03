@@ -14,6 +14,8 @@ import ContentPages from "./pages/ContentPages";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import { RoutePaths } from './config/route';
+import ProtectedRoute from "@/routes/ProtectedRoute";
+
 
 const queryClient = new QueryClient();
 
@@ -25,7 +27,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path={RoutePaths.LOGIN} element={<LoginPage />} />
-          <Route element={<AdminLayout />}>
+          <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route path={RoutePaths.DASHBOARD} element={<DashboardOverview />} />
             <Route path={RoutePaths.USERS} element={<UserManagement />} />
             <Route path={RoutePaths.CATEGORIES} element={<CategoryManagement />} />
