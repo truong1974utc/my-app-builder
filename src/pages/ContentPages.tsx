@@ -12,28 +12,96 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ContentPageDialog } from "@/components/dialogs/ContentPageDialog";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContentPage {
   id: string;
   title: string;
   slug: string;
+  content: string;
   status: "PUBLISHED" | "DRAFT";
   createdAt: string;
   updatedAt: string;
+  featuredImage?: string;
 }
 
-const contentPages: ContentPage[] = [
-  { id: "1", title: "About Us", slug: "/pages/about-us", status: "PUBLISHED", createdAt: "2024-01-10", updatedAt: "2024-03-05" },
+const initialPages: ContentPage[] = [
+  { 
+    id: "1", 
+    title: "About Us", 
+    slug: "/pages/about-us", 
+    content: "<p>About</p>",
+    status: "PUBLISHED", 
+    createdAt: "2024-01-10", 
+    updatedAt: "2024-03-05" 
+  },
 ];
 
 const ContentPages = () => {
+  const [pages, setPages] = useState(initialPages);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedPage, setSelectedPage] = useState<ContentPage | null>(null);
+  const [pageToDelete, setPageToDelete] = useState<ContentPage | null>(null);
+  const { toast } = useToast();
 
-  const filteredPages = contentPages.filter(
+  const filteredPages = pages.filter(
     (page) =>
       page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       page.slug.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleCreateClick = () => {
+    setSelectedPage(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditClick = (page: ContentPage) => {
+    setSelectedPage(page);
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (page: ContentPage) => {
+    setPageToDelete(page);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSubmit = (data: Omit<ContentPage, "id" | "createdAt" | "updatedAt"> & { id?: string }) => {
+    if (data.id) {
+      // Update existing
+      setPages(pages.map((p) => 
+        p.id === data.id 
+          ? { ...p, ...data, updatedAt: new Date().toISOString().split("T")[0] } 
+          : p
+      ));
+      toast({ title: "Page updated", description: `${data.title} has been updated.` });
+    } else {
+      // Create new
+      const newPage: ContentPage = {
+        id: Date.now().toString(),
+        title: data.title,
+        slug: data.slug,
+        content: data.content,
+        status: data.status,
+        featuredImage: data.featuredImage,
+        createdAt: new Date().toISOString().split("T")[0],
+        updatedAt: new Date().toISOString().split("T")[0],
+      };
+      setPages([...pages, newPage]);
+      toast({ title: "Page created", description: `${data.title} has been published.` });
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (pageToDelete) {
+      setPages(pages.filter((p) => p.id !== pageToDelete.id));
+      toast({ title: "Page deleted", description: `${pageToDelete.title} has been removed.` });
+      setPageToDelete(null);
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -53,7 +121,7 @@ const ContentPages = () => {
             className="pl-10"
           />
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleCreateClick}>
           <Plus className="h-4 w-4" />
           Create Page
         </Button>
@@ -113,10 +181,20 @@ const ContentPages = () => {
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <ExternalLink className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleEditClick(page)}
+                    >
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleDeleteClick(page)}
+                    >
                       <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </div>
@@ -126,6 +204,23 @@ const ContentPages = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Content Page Dialog */}
+      <ContentPageDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        page={selectedPage}
+        onSubmit={handleSubmit}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Page"
+        itemName={pageToDelete?.title || ""}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };

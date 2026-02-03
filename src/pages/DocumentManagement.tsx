@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DocumentDialog } from "@/components/dialogs/DocumentDialog";
+import { DocumentPreviewDialog } from "@/components/dialogs/DocumentPreviewDialog";
+import { DocumentEditDialog } from "@/components/dialogs/DocumentEditDialog";
 import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,7 +33,10 @@ const initialDocuments: Document[] = [
 const DocumentManagement = () => {
   const [documents, setDocuments] = useState(initialDocuments);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
   const { toast } = useToast();
 
@@ -46,9 +51,26 @@ const DocumentManagement = () => {
     setDialogOpen(true);
   };
 
+  const handlePreviewClick = (doc: Document) => {
+    setSelectedDocument(doc);
+    setPreviewDialogOpen(true);
+  };
+
+  const handleEditClick = (doc: Document) => {
+    setSelectedDocument(doc);
+    setEditDialogOpen(true);
+  };
+
   const handleDeleteClick = (doc: Document) => {
     setDocumentToDelete(doc);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditSubmit = (data: { id: string; title: string }) => {
+    setDocuments(documents.map((d) => 
+      d.id === data.id ? { ...d, name: data.title } : d
+    ));
+    toast({ title: "Document updated", description: `${data.title} has been updated.` });
   };
 
   const handleDocumentSubmit = (data: { file: File | null; title: string }) => {
@@ -121,10 +143,20 @@ const DocumentManagement = () => {
                 <TableCell className="text-muted-foreground">{doc.updatedAt}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handlePreviewClick(doc)}
+                    >
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleEditClick(doc)}
+                    >
                       <Pencil className="h-4 w-4 text-muted-foreground" />
                     </Button>
                     <Button
@@ -151,6 +183,21 @@ const DocumentManagement = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSubmit={handleDocumentSubmit}
+      />
+
+      {/* Preview Dialog */}
+      <DocumentPreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={setPreviewDialogOpen}
+        document={selectedDocument}
+      />
+
+      {/* Edit Dialog */}
+      <DocumentEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        document={selectedDocument}
+        onSubmit={handleEditSubmit}
       />
 
       {/* Delete Dialog */}
