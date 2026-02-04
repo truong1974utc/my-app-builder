@@ -14,24 +14,11 @@ export function useAuth() {
 
     try {
       const res = await authApi.login({ email, password })
-      /**
-       * res = {
-       *   success: true,
-       *   data: {
-       *     accessToken,
-       *     refreshToken,
-       *     expiresIn,
-       *     user
-       *   }
-       * }
-       */
 
-      const { accessToken, refreshToken, expiresIn, user } = res.data.data
+      const { accessToken, refreshToken, expiresIn, user } = res.data
 
-      // ✅ lưu token + expires
       saveAuth({ accessToken, refreshToken, expiresIn })
 
-      // user để riêng
       localStorage.setItem("user", JSON.stringify(user))
 
       navigate("/")

@@ -61,13 +61,13 @@ axiosClient.interceptors.response.use(
 
       try {
         const res = await authApi.refresh(refreshToken)
-        const newAccessToken = res.data.accessToken
+        const { accessToken } = res.data
 
-        localStorage.setItem("access_token", newAccessToken)
+        localStorage.setItem("access_token", accessToken)
 
-        processQueue(null, newAccessToken)
+        processQueue(null, accessToken)
 
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`
         return axiosClient(originalRequest)
       } catch (err) {
         processQueue(err, null)

@@ -1,28 +1,23 @@
 import axiosClient from "./axiosClient"
 
-export interface LoginResponse {
-  accessToken: string
-  refreshToken: string
-  expiresIn: number,
-  user: any
-}
-
-export interface LoginApiResponse {
+export interface AuthApiResponse {
   success: boolean
-  data: LoginResponse
+  data: {
+    accessToken: string
+    refreshToken: string
+    expiresIn: number
+    user: any
+  }
 }
 
 export const authApi = {
   login: (payload: { email: string; password: string }) =>
-    axiosClient.post<{ success: boolean; data: LoginResponse }>(
-      "/auth/login",
-      payload
-    ),
+    axiosClient.post("/auth/login", payload) as Promise<AuthApiResponse>,
 
   refresh: (refreshToken: string) =>
     axiosClient.post("/auth/refresh", {
       refreshToken,
-    }),
+    }) as Promise<AuthApiResponse>,
 
   me: () =>
     axiosClient.get("/auth/me"),
