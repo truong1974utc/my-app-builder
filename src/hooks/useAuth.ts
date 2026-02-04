@@ -26,7 +26,7 @@ export function useAuth() {
        * }
        */
 
-      const { accessToken, refreshToken, expiresIn, user } = res.data
+      const { accessToken, refreshToken, expiresIn, user } = res.data.data
 
       // ✅ lưu token + expires
       saveAuth({ accessToken, refreshToken, expiresIn })

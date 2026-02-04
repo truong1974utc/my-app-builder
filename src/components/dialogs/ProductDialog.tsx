@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Package, BarChart3, Image, Search, Star, DollarSign } from "lucide-react";
+import { useState, useEffect, KeyboardEvent } from "react";
+import { Package, BarChart3, Image, Search, Star, DollarSign, X, Tag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -20,11 +21,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Product } from "@/types/product";
 
 interface ProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: any) => void;
+  product?: Product | null;
+  mode?: "create" | "edit";
 }
 
 const tabs = [
@@ -43,10 +47,18 @@ const categories = [
   "Gaming",
 ];
 
-export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogProps) {
+export function ProductDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  product,
+  mode = "create",
+}: ProductDialogProps) {
   const [activeTab, setActiveTab] = useState("general");
   const [featured, setFeatured] = useState(false);
-  
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -70,13 +82,79 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
     slug: "",
   });
 
+  // Reset form when dialog opens or product changes
+  useEffect(() => {
+    if (open) {
+      if (product && mode === "edit") {
+        setFormData({
+          name: product.name || "",
+          sku: product.sku || "",
+          barcode: product.barcode || "",
+          category: product.category?.toLowerCase() || "",
+          brand: product.brand || "",
+          manufacturer: product.manufacturer || "",
+          weight: product.weight || "",
+          dimensions: product.dimensions || "",
+          description: product.description || "",
+          costPrice: product.costPrice?.toString() || "",
+          sellingPrice: product.price?.toString() || "",
+          comparePrice: product.originalPrice?.toString() || "",
+          stock: product.stock?.toString() || "",
+          minStock: product.minStock?.toString() || "",
+          metaTitle: product.metaTitle || "",
+          metaDescription: product.metaDescription || "",
+          slug: product.slug || "",
+        });
+        setFeatured(product.featured || false);
+        setTags(product.tags || []);
+      } else {
+        setFormData({
+          name: "",
+          sku: "",
+          barcode: "",
+          category: "",
+          brand: "",
+          manufacturer: "",
+          weight: "",
+          dimensions: "",
+          description: "",
+          costPrice: "",
+          sellingPrice: "",
+          comparePrice: "",
+          stock: "",
+          minStock: "",
+          metaTitle: "",
+          metaDescription: "",
+          slug: "",
+        });
+        setFeatured(false);
+        setTags([]);
+      }
+      setActiveTab("general");
+    }
+  }, [open, product, mode]);
+
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleAddTag = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && tagInput.trim() && tags.length < 8) {
+      e.preventDefault();
+      if (!tags.includes(tagInput.trim().toLowerCase())) {
+        setTags([...tags, tagInput.trim().toLowerCase()]);
+      }
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ ...formData, featured });
+    onSubmit({ ...formData, featured, tags });
     onOpenChange(false);
   };
 
@@ -94,7 +172,9 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
               <Package className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl">Create New Product</DialogTitle>
+              <DialogTitle className="text-xl">
+                {mode === "edit" ? "Edit Product" : "Create New Product"}
+              </DialogTitle>
               <p className="text-sm text-muted-foreground">
                 Configure all product specifications and market details.
               </p>
@@ -131,10 +211,12 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                 <DollarSign className="h-3.5 w-3.5" />
                 Est. Margin
               </div>
-              <p className={cn(
-                "text-2xl font-bold mt-1",
-                margin > 0 ? "text-success" : "text-muted-foreground"
-              )}>
+              <p
+                className={cn(
+                  "text-2xl font-bold mt-1",
+                  margin > 0 ? "text-success" : "text-muted-foreground"
+                )}
+              >
                 {margin}%
               </p>
             </div>
@@ -145,7 +227,7 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
             {/* Featured Toggle */}
             <div className="flex items-center justify-between rounded-lg border border-border p-4 mb-6">
               <div className="flex items-center gap-3">
-                <Star className="h-5 w-5 text-muted-foreground" />
+                <Star className="h-5 w-5 text-warning" />
                 <div>
                   <p className="font-medium">Featured Product</p>
                   <p className="text-sm text-muted-foreground">
@@ -165,7 +247,7 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                       Product Name *
                     </Label>
                     <Input
-                      placeholder="e.g. Nexus Ultra Pro"
+                      placeholder="e.g. MacBook Pro M3"
                       value={formData.name}
                       onChange={(e) => updateField("name", e.target.value)}
                       className="h-11"
@@ -190,7 +272,7 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                       Barcode / EAN
                     </Label>
                     <Input
-                      placeholder="1234567890123"
+                      placeholder="194253139045"
                       value={formData.barcode}
                       onChange={(e) => updateField("barcode", e.target.value)}
                       className="h-11"
@@ -224,7 +306,7 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                       Brand *
                     </Label>
                     <Input
-                      placeholder="e.g. Nexus"
+                      placeholder="e.g. Apple"
                       value={formData.brand}
                       onChange={(e) => updateField("brand", e.target.value)}
                       className="h-11"
@@ -235,7 +317,7 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                       Manufacturer *
                     </Label>
                     <Input
-                      placeholder="e.g. Nexus Systems Corp"
+                      placeholder="e.g. Apple Inc."
                       value={formData.manufacturer}
                       onChange={(e) => updateField("manufacturer", e.target.value)}
                       className="h-11"
@@ -249,7 +331,7 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                       Weight (e.g. 1.5kg)
                     </Label>
                     <Input
-                      placeholder="1.5 kg"
+                      placeholder="1.6 kg"
                       value={formData.weight}
                       onChange={(e) => updateField("weight", e.target.value)}
                       className="h-11"
@@ -260,7 +342,7 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                       Dimensions (e.g. 10x20x5cm)
                     </Label>
                     <Input
-                      placeholder="10 × 20 × 5 cm"
+                      placeholder="31.26 × 22.12 × 1.55 cm"
                       value={formData.dimensions}
                       onChange={(e) => updateField("dimensions", e.target.value)}
                       className="h-11"
@@ -273,11 +355,49 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
                     Description
                   </Label>
                   <Textarea
-                    placeholder="Describe the product value proposition..."
+                    placeholder="The latest MacBook Pro with the powerful M3 chip, featuring a stunning Liquid Retina XDR display."
                     value={formData.description}
                     onChange={(e) => updateField("description", e.target.value)}
                     className="min-h-[100px] resize-none"
                   />
+                </div>
+
+                {/* Tags */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium uppercase text-muted-foreground">
+                    Product Tags (1-8) *
+                  </Label>
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {tags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="gap-1 pl-2 pr-1"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <div className="relative">
+                    <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Press Enter to add tag"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleAddTag}
+                      className="h-11 pl-10"
+                      disabled={tags.length >= 8}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -416,10 +536,10 @@ export function ProductDialog({ open, onOpenChange, onSubmit }: ProductDialogPro
 
         <DialogFooter className="border-t pt-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Discard
+            Discard Changes
           </Button>
           <Button onClick={handleSubmit}>
-            Save Product
+            {mode === "edit" ? "Update Product" : "Save Product"}
           </Button>
         </DialogFooter>
       </DialogContent>
