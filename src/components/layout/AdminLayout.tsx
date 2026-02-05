@@ -13,9 +13,9 @@ export function AdminLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen w-full bg-background overflow-auto">
+    <div className="flex w-full bg-background">
       {/* Desktop Sidebar */}
-      {!isMobile && <AdminSidebar />}
+      {!isMobile && <AdminSidebar className="shrink-0" />}
       
       {/* Mobile Sidebar Sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -27,7 +27,7 @@ export function AdminLayout() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0">
         <AdminHeader onMenuClick={() => setMobileMenuOpen(true)} />
         <main className="flex-1 p-4 md:p-6">
           <Outlet />

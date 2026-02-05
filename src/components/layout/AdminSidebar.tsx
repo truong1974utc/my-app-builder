@@ -30,7 +30,7 @@ export function AdminSidebar({ className, onNavClick }: AdminSidebarProps) {
   const location = useLocation();
 
   return (
-    <aside className={cn("flex min-h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar", className)}>
+    <aside className={cn("flex w-64 flex-col border-r border-sidebar-border bg-sidebar", className)}>
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
