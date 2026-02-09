@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Plus, Pencil, Trash2, Layers } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
@@ -15,38 +16,120 @@ import {
 import { CategoryDialog } from "@/components/dialogs/CategoryDialog";
 import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
 import { useToast } from "@/hooks/use-toast";
+import { categoriesService } from "@/services/categories/categoriy.service";
+
+import { s } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
+import { Pagination } from "@/components/common/Pagination";
 
 interface Category {
   id: string;
   name: string;
   description: string;
-  products: number;
+  productCount: number;
 }
 
-const initialCategories: Category[] = [
-  { id: "1", name: "Electronics", description: "Modern gadgets and computing devices", products: 124 },
-  { id: "2", name: "Accessories", description: "Peripheral items and add-ons", products: 56 },
-  { id: "3", name: "Audio", description: "Headphones, speakers and sound systems", products: 89 },
-  { id: "4", name: "Home Appliances", description: "Devices for household usage", products: 32 },
-  { id: "5", name: "Wearables", description: "Smartwatches and fitness trackers", products: 41 },
-  { id: "6", name: "Gaming", description: "Consoles and gaming peripherals", products: 67 },
-];
+const DEFAULT_QUERY = {
+  page: 1,
+  limit: 10,
+  search: "",
+  sortBy: undefined as string | undefined,
+  sortOrder: undefined as "ASC" | "DESC" | undefined,
+};
 
 const CategoryManagement = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categories, setCategories] = useState(initialCategories);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Number(searchParams.get("page")) || DEFAULT_QUERY.page;
+  const limit = Number(searchParams.get("limit")) || DEFAULT_QUERY.limit;
+  const search = searchParams.get("search") || DEFAULT_QUERY.search;
+  const sortBy = searchParams.get("sortBy") || DEFAULT_QUERY.sortBy;
+  const sortOrder =
+    (searchParams.get("sortOrder") as "ASC" | "DESC") ||
+    DEFAULT_QUERY.sortOrder;
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [meta, setMeta] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    null,
+  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
+    null,
+  );
   const { toast } = useToast();
 
-  const filteredCategories = categories.filter(
-    (cat) =>
-      cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cat.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  /* ================== UPDATE URL ================== */
+  const updateQuery = (next: Partial<typeof DEFAULT_QUERY>) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+
+      const merged = {
+        page,
+        limit,
+        search,
+        sortBy,
+        sortOrder,
+        ...next,
+      };
+
+      // 👉 luôn set page & limit
+      params.set("page", String(merged.page));
+      params.set("limit", String(merged.limit));
+
+      merged.search
+        ? params.set("search", merged.search)
+        : params.delete("search");
+
+      merged.sortBy
+        ? params.set("sortBy", merged.sortBy)
+        : params.delete("sortBy");
+
+      merged.sortOrder
+        ? params.set("sortOrder", merged.sortOrder)
+        : params.delete("sortOrder");
+
+      return params;
+    });
+  };
+
+  useEffect(() => {
+    setSearchParams({
+      page: String(page),
+      limit: String(limit),
+      ...(search && { search }),
+      ...(sortBy && { sortBy }),
+      ...(sortOrder && { sortOrder }),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ================== FETCH ================== */
+  const fetchCategories = async () => {
+    setLoading(true);
+    try {
+      const res = await categoriesService.getCategories({
+        page,
+        limit,
+        ...(search && { search }),
+        ...(sortBy && { sortBy }),
+        ...(sortOrder && { sortOrder }),
+      });
+
+      if (!res.success) return;
+
+      setCategories(res.data.items);
+      setMeta(res.data.meta);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, [page, limit, search, sortBy, sortOrder]);
 
   const handleAddCategory = () => {
     setDialogMode("create");
@@ -65,32 +148,45 @@ const CategoryManagement = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleCategorySubmit = (data: { name: string; description: string }) => {
-    if (dialogMode === "create") {
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        name: data.name,
-        description: data.description,
-        products: 0,
-      };
-      setCategories([...categories, newCategory]);
-      toast({ title: "Category created", description: `${data.name} has been added successfully.` });
-    } else if (selectedCategory) {
-      setCategories(categories.map((c) =>
-        c.id === selectedCategory.id
-          ? { ...c, name: data.name, description: data.description }
-          : c
-      ));
-      toast({ title: "Category updated", description: `${data.name} has been updated successfully.` });
+  /* ================== CRUD ================== */
+  const handleCategorySubmit = async (data: {
+    name: string;
+    description: string;
+  }) => {
+    try {
+      if (dialogMode === "create") {
+        await categoriesService.createCategory(data);
+        toast({ title: "Category created" });
+      }
+
+      if (dialogMode === "edit" && selectedCategory) {
+        await categoriesService.updateCategory(selectedCategory.id, data);
+        toast({ title: "Category updated" });
+      }
+
+      await fetchCategories();
+
+      setDialogOpen(false);
+      setSelectedCategory(null);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDeleteConfirm = () => {
-    if (categoryToDelete) {
-      setCategories(categories.filter((c) => c.id !== categoryToDelete.id));
-      toast({ title: "Category deleted", description: `${categoryToDelete.name} has been removed.` });
-      setCategoryToDelete(null);
-    }
+  const handleDeleteConfirm = async () => {
+    if (!categoryToDelete) return;
+
+    await categoriesService.deleteCategory(categoryToDelete.id);
+    toast({ title: "Category deleted" });
+
+    await fetchCategories();
+    
+    setDeleteDialogOpen(false);
+    setCategoryToDelete(null);
   };
 
   return (
@@ -106,8 +202,13 @@ const CategoryManagement = () => {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search categories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={search}
+            onChange={(e) =>
+              updateQuery({
+                search: e.target.value,
+                page: 1,
+              })
+            }
             className="pl-10"
           />
         </div>
@@ -125,18 +226,25 @@ const CategoryManagement = () => {
               <TableHead className="font-semibold">CATEGORY NAME</TableHead>
               <TableHead className="font-semibold">DESCRIPTION</TableHead>
               <TableHead className="font-semibold">PRODUCTS</TableHead>
-              <TableHead className="font-semibold text-right">ACTIONS</TableHead>
+              <TableHead className="font-semibold text-right">
+                ACTIONS
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCategories.map((category) => (
-              <TableRow key={category.id} className="hover:bg-muted/30 transition-colors">
+            {categories.map((category) => (
+              <TableRow
+                key={category.id}
+                className="hover:bg-muted/30 transition-colors"
+              >
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <Layers className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="font-medium text-foreground">{category.name}</span>
+                    <span className="font-medium text-foreground">
+                      {category.name}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
@@ -144,7 +252,7 @@ const CategoryManagement = () => {
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary" className="bg-info/10 text-info">
-                    {category.products} Items
+                    {category.productCount} Items
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
@@ -172,6 +280,15 @@ const CategoryManagement = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {meta && (
+        <Pagination
+          page={page}
+          totalPages={meta.totalPages}
+          onPageChange={(p) => updateQuery({ page: p })}
+        />
+      )}
 
       {/* Category Dialog */}
       <CategoryDialog

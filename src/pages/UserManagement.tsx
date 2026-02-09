@@ -34,7 +34,6 @@ const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -65,12 +64,10 @@ const UserManagement = () => {
     role: string;
     status: string;
   }) => {
-    setCreating(true);
     try {
       await usersService.createUser(payload);
       await fetchUsers();
     } finally {
-      setCreating(false);
     }
   };
 
@@ -82,12 +79,10 @@ const UserManagement = () => {
       password?: string;
     },
   ) => {
-    setCreating(true);
     try {
       await usersService.updateUser(id, payload);
       await fetchUsers();
     } finally {
-      setCreating(false);
     }
   };
 
@@ -122,41 +117,6 @@ const UserManagement = () => {
     setSelectedUser(user);
     setDialogOpen(true);
   };
-
-  const handleDeleteClick = (user: User) => {
-    setUserToDelete(user);
-    setDeleteDialogOpen(true);
-  };
-
-  // const handleUserSubmit = (data: { name: string; email: string; password: string }) => {
-  //   if (dialogMode === "create") {
-  //     const newUser: User = {
-  //       id: Date.now().toString(),
-  //       name: data.name,
-  //       email: data.email,
-  //       role: "ADMIN",
-  //       status: "Active",
-  //       avatar: data.name.charAt(0).toUpperCase(),
-  //     };
-  //     setUsers([...users, newUser]);
-  //     toast({ title: "User created", description: `${data.name} has been added successfully.` });
-  //   } else if (selectedUser) {
-  //     setUsers(users.map((u) =>
-  //       u.id === selectedUser.id
-  //         ? { ...u, name: data.name, email: data.email, avatar: data.name.charAt(0).toUpperCase() }
-  //         : u
-  //     ));
-  //     toast({ title: "User updated", description: `${data.name} has been updated successfully.` });
-  //   }
-  // };
-
-  // const handleDeleteConfirm = () => {
-  //   if (userToDelete) {
-  //     setUsers(users.filter((u) => u.id !== userToDelete.id));
-  //     toast({ title: "User deleted", description: `${userToDelete.name} has been removed.` });
-  //     setUserToDelete(null);
-  //   }
-  // };
 
   return (
     <div className="animate-fade-in">
