@@ -1,7 +1,8 @@
 import { Eye, Pencil, Trash2, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Product } from "@/types/product";
+import { Product } from "@/types/product.type";
+import { useEffect } from "react";
 
 interface ProductCardProps {
   product: Product;
@@ -29,11 +30,11 @@ export function ProductCard({ product, onView, onEdit, onDelete }: ProductCardPr
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
-          src={product.image}
+          src={product.mainImage}
           alt={product.name}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        {product.featured && (
+        {product.isFeatured && (
           <div className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-warning">
             <Star className="h-4 w-4 fill-warning-foreground text-warning-foreground" />
           </div>
@@ -46,7 +47,7 @@ export function ProductCard({ product, onView, onEdit, onDelete }: ProductCardPr
       {/* Content */}
       <div className="p-4">
         <p className="text-xs font-medium text-primary uppercase tracking-wide">
-          {product.category}
+          {product.category.name}
         </p>
         <h3 className="mt-1 text-lg font-semibold text-foreground">{product.name}</h3>
 
@@ -55,11 +56,11 @@ export function ProductCard({ product, onView, onEdit, onDelete }: ProductCardPr
             <p className="text-xs text-muted-foreground uppercase">Pricing</p>
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-bold text-foreground">
-                ${product.price.toLocaleString()}
+                ${product.basePrice.toLocaleString()}
               </span>
-              {product.originalPrice && (
+              {product.basePrice && (
                 <span className="text-sm text-muted-foreground line-through">
-                  ${product.originalPrice.toLocaleString()}
+                  ${product.basePrice.toLocaleString()}
                 </span>
               )}
             </div>
@@ -68,14 +69,14 @@ export function ProductCard({ product, onView, onEdit, onDelete }: ProductCardPr
             <p className="text-xs text-muted-foreground uppercase">Stock</p>
             <span
               className={`text-lg font-bold ${
-                product.stock === 0
+                product.stockUnits === 0
                   ? "text-destructive"
-                  : product.stock < 10
+                  : product.stockUnits < 10
                   ? "text-warning"
                   : "text-foreground"
               }`}
             >
-              {product.stock}
+              {product.stockUnits}
             </span>
           </div>
         </div>

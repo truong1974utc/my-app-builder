@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { authApi } from "@/api/auth.api"
+import { authApi } from "@/services/auth.api"
 import { saveAuth } from "@/utils/token"
 
 export function useAuth() {

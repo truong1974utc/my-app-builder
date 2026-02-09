@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Product } from "@/types/product";
+import { Product } from "@/types/product.type";
 
 interface ProductDialogProps {
   open: boolean;

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { User, Mail, Key, Eye, EyeOff, RefreshCw } from "lucide-react";
 import {
   Dialog,
@@ -11,45 +12,85 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
+type FormValues = {
+  name: string;
+  email: string;
+  password: string;
+};
+
 interface UserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   user?: {
     id: string;
-    name: string;
+    fullName: string;
     email: string;
   };
   onSubmit: (data: { name: string; email: string; password: string }) => void;
 }
 
-export function UserDialog({ open, onOpenChange, mode, user, onSubmit }: UserDialogProps) {
-  const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [password, setPassword] = useState("");
+export function UserDialog({
+  open,
+  onOpenChange,
+  mode,
+  user,
+  onSubmit,
+}: UserDialogProps) {
+  const isEdit = mode === "edit";
   const [showPassword, setShowPassword] = useState(false);
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (mode === "create") {
+      reset({
+        name: "",
+        email: "",
+        password: "",
+      });
+    }
+
+    if (mode === "edit" && user) {
+      reset({
+        name: user.fullName,
+        email: user.email,
+        password: "",
+      });
+    }
+
+    setShowPassword(false);
+  }, [open, mode, user, reset]);
+
   const generatePassword = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
     let result = "";
     for (let i = 0; i < 12; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setPassword(result);
+    setValue("password", result);
     setShowPassword(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({ name, email, password });
+  const submit = (data: FormValues) => {
+    onSubmit(data);
     onOpenChange(false);
-    // Reset form
-    setName("");
-    setEmail("");
-    setPassword("");
   };
-
-  const isEdit = mode === "edit";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,7 +106,7 @@ export function UserDialog({ open, onOpenChange, mode, user, onSubmit }: UserDia
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-4">
+        <form onSubmit={handleSubmit(submit)} autoComplete="off" className="space-y-5 pt-4">
           {/* Full Name */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
@@ -73,12 +114,13 @@ export function UserDialog({ open, onOpenChange, mode, user, onSubmit }: UserDia
               Full Name
             </Label>
             <Input
-              placeholder="e.g. John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              placeholder="Full Name"
               className="h-11"
-              required
+              {...register("name", { required: "Name is required" })}
             />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
+            )}
           </div>
 
           {/* Email */}
@@ -89,12 +131,15 @@ export function UserDialog({ open, onOpenChange, mode, user, onSubmit }: UserDia
             </Label>
             <Input
               type="email"
-              placeholder="john@nexus.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email"
               className="h-11"
-              required
+              {...register("email", {
+                required: "Email is required",
+              })}
             />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
           </div>
 
           {/* Password */}
@@ -108,17 +153,21 @@ export function UserDialog({ open, onOpenChange, mode, user, onSubmit }: UserDia
                 <Input
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   className="h-11 pr-10"
-                  required={!isEdit}
+                  {...register("password", {
+                    required: !isEdit ? "Password is required" : false,
+                  })}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
               <Button
@@ -139,7 +188,11 @@ export function UserDialog({ open, onOpenChange, mode, user, onSubmit }: UserDia
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Discard
             </Button>
             <Button type="submit">
