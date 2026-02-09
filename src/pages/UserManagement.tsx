@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { UserDialog } from "@/components/dialogs/UserDialog";
 import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
-import { useToast } from "@/hooks/use-toast";
 import { User } from "@/types/user.type";
 import { Pagination } from "@/components/common/Pagination";
 import { usersService } from "@/services/users/user.service";
@@ -37,11 +36,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const [role, setRole] = useState<string | undefined>();
-  const [status, setStatus] = useState<string | undefined>();
-  const [sortBy, setSortBy] = useState<string | undefined>();
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>();
-  const { toast } = useToast();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -50,10 +45,6 @@ const UserManagement = () => {
         page,
         limit,
         search: debouncedSearch || undefined,
-        role,
-        status,
-        sortBy,
-        sortOrder,
       });
 
       setUsers(res.data.items);
@@ -65,7 +56,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, limit, debouncedSearch, role, status, sortBy, sortOrder]);
+  }, [page, limit, debouncedSearch]);
 
   const createUser = async (payload: {
     fullName: string;
@@ -80,6 +71,37 @@ const UserManagement = () => {
       await fetchUsers();
     } finally {
       setCreating(false);
+    }
+  };
+
+  const updateUser = async (
+    id: string,
+    payload: {
+      fullName: string;
+      email: string;
+      password?: string;
+    },
+  ) => {
+    setCreating(true);
+    try {
+      await usersService.updateUser(id, payload);
+      await fetchUsers();
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+
+    try {
+      setDeletingId(userToDelete.id);
+      await usersService.deleteUser(userToDelete.id);
+      await fetchUsers();
+    } finally {
+      setDeletingId(null);
+      setUserToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -245,8 +267,12 @@ const UserManagement = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        disabled={deletingId === user.id}
                         className="h-8 w-8"
-                        onClick={() => handleDeleteClick(user)}
+                        onClick={() => {
+                          setUserToDelete(user);
+                          setDeleteDialogOpen(true);
+                        }}
                       >
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
@@ -272,13 +298,28 @@ const UserManagement = () => {
         mode={dialogMode}
         user={selectedUser || undefined}
         onSubmit={async (data) => {
-          await createUser({
-            fullName: data.name,
-            email: data.email,
-            password: data.password,
-            role: "ADMIN",
-            status: "ACTIVE",
-          });
+          if (dialogMode === "create") {
+            await createUser({
+              fullName: data.name,
+              email: data.email,
+              password: data.password,
+              role: "ADMIN",
+              status: "ACTIVE",
+            });
+          }
+
+          if (dialogMode === "edit" && selectedUser) {
+            const payload: any = {
+              fullName: data.name,
+              email: data.email,
+            };
+
+            if (data.password?.trim()) {
+              payload.password = data.password;
+            }
+
+            await updateUser(selectedUser.id, payload);
+          }
 
           setDialogOpen(false);
         }}
@@ -290,8 +331,7 @@ const UserManagement = () => {
         onOpenChange={setDeleteDialogOpen}
         title="Delete User"
         itemName={userToDelete?.fullName || ""}
-        onConfirm={() => {}}
-        // onConfirm={handleDeleteConfirm}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
