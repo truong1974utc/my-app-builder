@@ -20,6 +20,10 @@ import { categoriesService } from "@/services/categories/categoriy.service";
 
 import { s } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
 import { Pagination } from "@/components/common/Pagination";
+import { usePagination } from "@/hooks/usePagination";
+import { useSearch } from "@/hooks/useSearchQuery";
+import { useSort } from "@/hooks/useSortQuery";
+import { PaginationLimit } from "@/enums/pagination.enum";
 
 interface Category {
   id: string;
@@ -28,24 +32,25 @@ interface Category {
   productCount: number;
 }
 
-const DEFAULT_QUERY = {
-  page: 1,
-  limit: 10,
-  search: "",
-  sortBy: undefined as string | undefined,
-  sortOrder: undefined as "ASC" | "DESC" | undefined,
-};
-
 const CategoryManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const page = Number(searchParams.get("page")) || DEFAULT_QUERY.page;
-  const limit = Number(searchParams.get("limit")) || DEFAULT_QUERY.limit;
-  const search = searchParams.get("search") || DEFAULT_QUERY.search;
-  const sortBy = searchParams.get("sortBy") || DEFAULT_QUERY.sortBy;
-  const sortOrder =
-    (searchParams.get("sortOrder") as "ASC" | "DESC") ||
-    DEFAULT_QUERY.sortOrder;
+  const pageFromUrl = Number(searchParams.get("page")) || 1;
+  const limitFromUrl = Number(searchParams.get("limit")) || PaginationLimit.TEN;
+  const searchFromUrl = searchParams.get("search") || "";
+  const sortByFromUrl = searchParams.get("sortBy") || undefined;
+  const sortOrderFromUrl = searchParams.get("sortOrder") as any;
 
+  const { page, limit, setPage, setLimit } = usePagination(
+    pageFromUrl,
+    limitFromUrl,
+  );
+
+  const { search, setSearch, debouncedSearch } = useSearch(searchFromUrl);
+
+  const { sortBy, sortOrder, toggleSort } = useSort(
+    sortByFromUrl,
+    sortOrderFromUrl,
+  );
   const [categories, setCategories] = useState<Category[]>([]);
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -61,51 +66,6 @@ const CategoryManagement = () => {
   );
   const { toast } = useToast();
 
-  /* ================== UPDATE URL ================== */
-  const updateQuery = (next: Partial<typeof DEFAULT_QUERY>) => {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-
-      const merged = {
-        page,
-        limit,
-        search,
-        sortBy,
-        sortOrder,
-        ...next,
-      };
-
-      // 👉 luôn set page & limit
-      params.set("page", String(merged.page));
-      params.set("limit", String(merged.limit));
-
-      merged.search
-        ? params.set("search", merged.search)
-        : params.delete("search");
-
-      merged.sortBy
-        ? params.set("sortBy", merged.sortBy)
-        : params.delete("sortBy");
-
-      merged.sortOrder
-        ? params.set("sortOrder", merged.sortOrder)
-        : params.delete("sortOrder");
-
-      return params;
-    });
-  };
-
-  useEffect(() => {
-    setSearchParams({
-      page: String(page),
-      limit: String(limit),
-      ...(search && { search }),
-      ...(sortBy && { sortBy }),
-      ...(sortOrder && { sortOrder }),
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   /* ================== FETCH ================== */
   const fetchCategories = async () => {
     setLoading(true);
@@ -113,7 +73,7 @@ const CategoryManagement = () => {
       const res = await categoriesService.getCategories({
         page,
         limit,
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(sortBy && { sortBy }),
         ...(sortOrder && { sortOrder }),
       });
@@ -128,8 +88,21 @@ const CategoryManagement = () => {
   };
 
   useEffect(() => {
+    const params: Record<string, string> = {
+      page: String(page),
+      limit: String(limit),
+    };
+
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.sortOrder = sortOrder;
+
+    setSearchParams(params);
+  }, [page, limit, debouncedSearch, sortBy, sortOrder]);
+
+  useEffect(() => {
     fetchCategories();
-  }, [page, limit, search, sortBy, sortOrder]);
+  }, [page, limit, debouncedSearch, sortBy, sortOrder]);
 
   const handleAddCategory = () => {
     setDialogMode("create");
@@ -184,7 +157,7 @@ const CategoryManagement = () => {
     toast({ title: "Category deleted" });
 
     await fetchCategories();
-    
+
     setDeleteDialogOpen(false);
     setCategoryToDelete(null);
   };
@@ -203,12 +176,7 @@ const CategoryManagement = () => {
           <Input
             placeholder="Search categories..."
             value={search}
-            onChange={(e) =>
-              updateQuery({
-                search: e.target.value,
-                page: 1,
-              })
-            }
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -286,7 +254,7 @@ const CategoryManagement = () => {
         <Pagination
           page={page}
           totalPages={meta.totalPages}
-          onPageChange={(p) => updateQuery({ page: p })}
+          onPageChange={setPage}
         />
       )}
 
