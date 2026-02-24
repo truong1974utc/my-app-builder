@@ -31,9 +31,9 @@ export function ProductDetailView({
 }: ProductDetailViewProps) {
   const [selectedImage, setSelectedImage] = useState(0);
 
-  const images = product.images?.length
-    ? product.images
-    : [product.image, product.image];
+  const images = (product as any).images?.length
+    ? (product as any).images
+    : [product.mainImage || "", product.mainImage || ""];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -48,14 +48,15 @@ export function ProductDetailView({
     }
   };
 
-  const costPrice = product.costPrice || product.price * 0.8;
-  const margin = costPrice > 0 ? ((product.price - costPrice) / costPrice) * 100 : 0;
-  const inventoryLevel = product.minStock
-    ? Math.min((product.stock / product.minStock) * 100, 100)
-    : product.stock > 10
+  const numericPrice = Number(product.basePrice) || 0;
+  const costPrice = Number((product as any).costPrice) || numericPrice * 0.8;
+  const margin = costPrice > 0 ? ((numericPrice - costPrice) / costPrice) * 100 : 0;
+  const inventoryLevel = product.minStockLevel
+    ? Math.min((product.stockUnits / product.minStockLevel) * 100, 100)
+    : product.stockUnits > 10
     ? 100
-    : (product.stock / 10) * 100;
-  const inventoryHealth = product.stock === 0 ? "OUT" : product.stock < 10 ? "LOW" : "HEALTHY";
+    : (product.stockUnits / 10) * 100;
+  const inventoryHealth = product.stockUnits === 0 ? "OUT" : product.stockUnits < 10 ? "LOW" : "HEALTHY";
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -117,7 +118,7 @@ export function ProductDetailView({
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge className={getStatusColor(product.status)}>{product.status}</Badge>
-              {product.featured && (
+              {(product as any).isFeatured && (
                 <Badge className="bg-warning/20 text-warning border-warning gap-1">
                   <Star className="h-3 w-3 fill-warning" />
                   SHOWCASE PRODUCT
@@ -128,7 +129,7 @@ export function ProductDetailView({
             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Package className="h-4 w-4 text-primary" />
-                {product.category}
+                {product.category?.name}
               </span>
               {product.brand && (
                 <span className="flex items-center gap-1">
@@ -148,11 +149,11 @@ export function ProductDetailView({
                 Revenue Analysis
               </div>
               <p className="text-3xl font-bold mt-2">
-                ${product.price.toLocaleString()}
+                ${numericPrice.toLocaleString()}
               </p>
-              {product.originalPrice && (
+              {product.discountPrice && (
                 <p className="text-sm opacity-75 line-through">
-                  Originally ${product.originalPrice.toLocaleString()}
+                  Originally ${Number(product.discountPrice).toLocaleString()}
                 </p>
               )}
               <div className="flex gap-4 mt-4 pt-3 border-t border-primary-foreground/20">
@@ -162,7 +163,7 @@ export function ProductDetailView({
                 </div>
                 <div>
                   <p className="text-xs opacity-75">Unit Cost</p>
-                  <p className="font-bold">${costPrice.toLocaleString()}</p>
+                  <p className="font-bold">${Number(costPrice).toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -173,7 +174,7 @@ export function ProductDetailView({
                 <Package className="h-4 w-4" />
                 Stock Health
               </div>
-              <p className="text-3xl font-bold mt-2">{product.stock}</p>
+              <p className="text-3xl font-bold mt-2">{product.stockUnits}</p>
               <p className="text-xs text-muted-foreground">UNITS CURRENTLY ON-HAND</p>
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between text-xs">
@@ -202,7 +203,7 @@ export function ProductDetailView({
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>ALERT THRESHOLD</span>
-                  <span>{product.minStock || 10} units</span>
+                  <span>{product.minStockLevel || 10} units</span>
                 </div>
               </div>
             </div>

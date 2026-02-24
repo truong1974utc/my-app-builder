@@ -5,16 +5,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DocumentItem } from "@/types/document.type";
 
 interface DocumentPreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  document: {
-    name: string;
-    type: string;
-    size: string;
-    owner: string;
-  } | null;
+  document: DocumentItem | null;
 }
 
 export function DocumentPreviewDialog({
@@ -44,7 +40,7 @@ export function DocumentPreviewDialog({
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b">
           <div className="flex items-start gap-4">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${getFileTypeColor(document.type)}`}>
+            <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${getFileTypeColor(document.fileType)}`}>
               <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
@@ -55,13 +51,13 @@ export function DocumentPreviewDialog({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-foreground">{document.name}</h2>
+                <h2 className="text-xl font-semibold text-foreground">{document.owner.fullName}</h2>
                 <Badge variant="secondary" className="text-xs">
-                  {getFileTypeBadge(document.type)}
+                  {getFileTypeBadge(document.fileType)}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                Added by {document.owner} • {document.size}
+                Added by {document.owner.fullName} • {document.fileSize}
               </p>
             </div>
           </div>

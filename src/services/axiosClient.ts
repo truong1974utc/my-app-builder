@@ -18,22 +18,21 @@ export class ApiClient {
     });
 
     this.instance.interceptors.request.use(this.handleRequest.bind(this));
+
     this.instance.interceptors.response.use(
       this.handleResponse.bind(this),
       this.handleError.bind(this),
     );
   }
 
-  private processQueue(error: any, token: string | null = null) {
-    this.failedQueue.forEach((p) => {
-      if (error) p.reject(error);
-      else p.resolve(token);
-    });
-    this.failedQueue = [];
-  }
-
+  // =============================
+  // REQUEST
+  // =============================
   private handleRequest(config: AxiosRequestConfig | any) {
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem("accessToken");
+
+    console.log("🔵 REQUEST:", config.url);
+    console.log("🔵 accessToken:", token);
 
     if (
       token &&
@@ -47,28 +46,69 @@ export class ApiClient {
     return config;
   }
 
+  // =============================
+  // RESPONSE SUCCESS
+  // =============================
   private handleResponse(response: any) {
+    console.log("🟢 RESPONSE OK:", response.config?.url);
     return response.data;
   }
 
+  // =============================
+  // PROCESS QUEUE
+  // =============================
+  private processQueue(error: any, token: string | null = null) {
+    this.failedQueue.forEach((p) => {
+      if (error) p.reject(error);
+      else p.resolve(token);
+    });
+    this.failedQueue = [];
+  }
+
+  // =============================
+  // RESPONSE ERROR
+  // =============================
   private async handleError(error: any) {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    console.log("🔴 RESPONSE ERROR:", originalRequest?.url);
+
+    if (!error.response) {
+      return Promise.reject(error);
+    }
+
+    // 🚫 Không refresh nếu đang là refresh
+    if (originalRequest?.url?.includes("/auth/refresh")) {
+      console.log("❌ Refresh itself failed");
+      localStorage.clear();
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    // 🔁 Nếu 401 và chưa retry
+    if (
+      error.response.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/auth/login")
+    ) {
       originalRequest._retry = true;
 
-      const refreshToken = localStorage.getItem("refresh_token");
+      const refreshToken = localStorage.getItem("refreshToken");
+      console.log("🟡 Try refresh with token:", refreshToken);
+
       if (!refreshToken) {
+        console.log("❌ No refreshToken → logout");
         localStorage.clear();
-        window.location.href = "/login";
         return Promise.reject(error);
       }
 
+      // Nếu đang refresh thì chờ
       if (this.isRefreshing) {
+        console.log("⏳ Waiting for refresh...");
+
         return new Promise((resolve, reject) => {
           this.failedQueue.push({ resolve, reject });
         }).then((token) => {
-          originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${token}`;
           return this.instance(originalRequest);
         });
@@ -77,17 +117,28 @@ export class ApiClient {
       this.isRefreshing = true;
 
       try {
+        console.log("🟡 Calling refresh API...");
         const res = await authApi.refresh(refreshToken);
-        const { accessToken } = res.data;
 
-        localStorage.setItem("access_token", accessToken);
+        // ⚠ QUAN TRỌNG: tuỳ backend trả gì
+        const newAccessToken = res.data?.accessToken || res.accessToken;
 
-        this.processQueue(null, accessToken);
+        console.log("🟢 New accessToken:", newAccessToken);
+
+        if (!newAccessToken) {
+          throw new Error("No accessToken returned");
+        }
+
+        localStorage.setItem("accessToken", newAccessToken);
+
+        this.processQueue(null, newAccessToken);
 
         originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
         return this.instance(originalRequest);
       } catch (err) {
+        console.log("❌ Refresh failed → logout");
         this.processQueue(err, null);
         localStorage.clear();
         window.location.href = "/login";
@@ -99,6 +150,10 @@ export class ApiClient {
 
     return Promise.reject(error);
   }
+
+  // =============================
+  // METHODS
+  // =============================
 
   get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.instance.get(url, config) as Promise<T>;
@@ -138,5 +193,4 @@ export class ApiClient {
 }
 
 const apiClient = new ApiClient();
-
 export default apiClient;

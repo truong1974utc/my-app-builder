@@ -1,5 +1,14 @@
-import { useState, useEffect, KeyboardEvent } from "react";
-import { Package, BarChart3, Image, Search, Star, DollarSign, X, Tag } from "lucide-react";
+import { useState, useEffect, KeyboardEvent, useRef } from "react";
+import {
+  Package,
+  BarChart3,
+  Image,
+  Search,
+  Star,
+  DollarSign,
+  X,
+  Tag,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +30,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Product } from "@/types/product.type";
+import { Product, Category } from "@/types/product.type";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { productSchema } from "@/schemas/product.schema";
 
 interface ProductDialogProps {
   open: boolean;
@@ -29,6 +41,28 @@ interface ProductDialogProps {
   onSubmit: (data: any) => void;
   product?: Product | null;
   mode?: "create" | "edit";
+  categories?: Category[];
+}
+
+interface ProductFormValues {
+  sku: string;
+  barcode?: string;
+  name: string;
+  description?: string;
+  categoryId: string;
+  brand: string;
+  manufacturer: string;
+  weight?: string;
+  dimensions?: string;
+  basePrice: number;
+  costPrice: number;
+  discountPrice?: number;
+  stockUnits: number;
+  lowStockAlert?: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  isFeatured: boolean;
+  images?: File[];
 }
 
 const tabs = [
@@ -38,105 +72,49 @@ const tabs = [
   { id: "seo", label: "Search Engine", icon: Search, hasError: false },
 ];
 
-const categories = [
-  "Electronics",
-  "Accessories",
-  "Audio",
-  "Home Appliances",
-  "Wearables",
-  "Gaming",
-];
-
 export function ProductDialog({
   open,
   onOpenChange,
   onSubmit,
   product,
   mode = "create",
+  categories = [],
 }: ProductDialogProps) {
   const [activeTab, setActiveTab] = useState("general");
   const [featured, setFeatured] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    sku: "",
-    barcode: "",
-    category: "",
-    brand: "",
-    manufacturer: "",
-    weight: "",
-    dimensions: "",
-    description: "",
-    // Pricing
-    costPrice: "",
-    sellingPrice: "",
-    comparePrice: "",
-    stock: "",
-    minStock: "",
-    // SEO
-    metaTitle: "",
-    metaDescription: "",
-    slug: "",
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<ProductFormValues>({
+    defaultValues: {
+      sku: "",
+      barcode: "",
+      name: "",
+      description: "",
+      categoryId: "",
+      brand: "",
+      manufacturer: "",
+      weight: "",
+      dimensions: "",
+      basePrice: 0,
+      costPrice: 0,
+      discountPrice: 0,
+      stockUnits: 0,
+      lowStockAlert: 5,
+      metaTitle: "",
+      metaDescription: "",
+      isFeatured: false,
+      images: [],
+    },
   });
-
-  // Reset form when dialog opens or product changes
-  useEffect(() => {
-    if (open) {
-      if (product && mode === "edit") {
-        setFormData({
-          name: product.name || "",
-          sku: product.sku || "",
-          barcode: product.barcode || "",
-          category: product.category?.toLowerCase() || "",
-          brand: product.brand || "",
-          manufacturer: product.manufacturer || "",
-          weight: product.weight || "",
-          dimensions: product.dimensions || "",
-          description: product.description || "",
-          costPrice: product.costPrice?.toString() || "",
-          sellingPrice: product.price?.toString() || "",
-          comparePrice: product.originalPrice?.toString() || "",
-          stock: product.stock?.toString() || "",
-          minStock: product.minStock?.toString() || "",
-          metaTitle: product.metaTitle || "",
-          metaDescription: product.metaDescription || "",
-          slug: product.slug || "",
-        });
-        setFeatured(product.featured || false);
-        setTags(product.tags || []);
-      } else {
-        setFormData({
-          name: "",
-          sku: "",
-          barcode: "",
-          category: "",
-          brand: "",
-          manufacturer: "",
-          weight: "",
-          dimensions: "",
-          description: "",
-          costPrice: "",
-          sellingPrice: "",
-          comparePrice: "",
-          stock: "",
-          minStock: "",
-          metaTitle: "",
-          metaDescription: "",
-          slug: "",
-        });
-        setFeatured(false);
-        setTags([]);
-      }
-      setActiveTab("general");
-    }
-  }, [open, product, mode]);
-
-  const updateField = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
 
   const handleAddTag = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() && tags.length < 8) {
@@ -152,16 +130,75 @@ export function ProductDialog({
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({ ...formData, featured, tags });
-    onOpenChange(false);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const fileArray = Array.from(files);
+
+    console.log("Selected files:", fileArray);
+
+    setValue("images", fileArray, {
+      shouldValidate: true,
+    });
   };
 
-  // Calculate margin
-  const costPrice = parseFloat(formData.costPrice) || 0;
-  const sellingPrice = parseFloat(formData.sellingPrice) || 0;
-  const margin = costPrice > 0 ? Math.round(((sellingPrice - costPrice) / costPrice) * 100) : 0;
+  const onFormSubmit = (data: ProductFormValues) => {
+    if (!data.categoryId) {
+      alert("Please select category");
+      return;
+    }
+
+    const payload = {
+      ...data,
+      isFeatured: featured,
+      tags,
+      images: [], // xử lý sau nếu cần
+    };
+
+    console.log("Form Submitted:", payload);
+
+    onSubmit(payload);
+  };
+
+  const basePrice = watch("basePrice") || 0;
+  const costPrice = watch("costPrice") || 0;
+
+  const margin =
+    costPrice > 0 ? Math.round(((basePrice - costPrice) / basePrice) * 100) : 0;
+
+  useEffect(() => {
+    if (open && product && mode === "edit") {
+      reset({
+        sku: product.sku,
+        barcode: product.barcode ?? "",
+        name: product.name,
+        description: product.description ?? "",
+        categoryId: product.category?.id ?? "",
+        brand: product.brand,
+        manufacturer: product.manufacturer ?? "",
+        weight: product.weight ?? "",
+        dimensions: product.dimensions ?? "",
+        basePrice: Number(product.basePrice),
+        costPrice: 0, // GET không trả về costPrice
+        discountPrice: Number(product.discountPrice ?? 0),
+        stockUnits: product.stockUnits,
+        lowStockAlert: 5,
+        metaTitle: product.metaTitle ?? "",
+        metaDescription: product.metaDescription ?? "",
+        isFeatured: product.isFeatured,
+      });
+
+      setFeatured(product.isFeatured);
+      setTags(product.tags ?? []);
+    }
+
+    if (open && mode === "create") {
+      reset();
+      setFeatured(false);
+      setTags([]);
+    }
+  }, [open, product, mode, reset]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,7 +219,11 @@ export function ProductDialog({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 gap-6 overflow-hidden">
+        <form
+          id="product-form"
+          onSubmit={handleSubmit(onFormSubmit)}
+          className="flex flex-1 gap-6 overflow-hidden"
+        >
           {/* Left Sidebar - Tabs */}
           <div className="w-48 shrink-0 space-y-1">
             {tabs.map((tab) => (
@@ -194,7 +235,7 @@ export function ProductDialog({
                   "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   activeTab === tab.id
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <tab.icon className="h-4 w-4" />
@@ -214,7 +255,7 @@ export function ProductDialog({
               <p
                 className={cn(
                   "text-2xl font-bold mt-1",
-                  margin > 0 ? "text-success" : "text-muted-foreground"
+                  margin > 0 ? "text-success" : "text-muted-foreground",
                 )}
               >
                 {margin}%
@@ -246,12 +287,7 @@ export function ProductDialog({
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
                       Product Name *
                     </Label>
-                    <Input
-                      placeholder="e.g. MacBook Pro M3"
-                      value={formData.name}
-                      onChange={(e) => updateField("name", e.target.value)}
-                      className="h-11"
-                    />
+                    <Input {...register("name")} className="h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
@@ -259,8 +295,7 @@ export function ProductDialog({
                     </Label>
                     <Input
                       placeholder="APL-123-MB"
-                      value={formData.sku}
-                      onChange={(e) => updateField("sku", e.target.value)}
+                      {...register("sku")}
                       className="h-11 font-mono"
                     />
                   </div>
@@ -273,8 +308,7 @@ export function ProductDialog({
                     </Label>
                     <Input
                       placeholder="194253139045"
-                      value={formData.barcode}
-                      onChange={(e) => updateField("barcode", e.target.value)}
+                      {...register("barcode")}
                       className="h-11"
                     />
                   </div>
@@ -283,16 +317,16 @@ export function ProductDialog({
                       Category *
                     </Label>
                     <Select
-                      value={formData.category}
-                      onValueChange={(value) => updateField("category", value)}
+                      value={watch("categoryId")}
+                      onValueChange={(value) => setValue("categoryId", value)}
                     >
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat.toLowerCase()}>
-                            {cat}
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -307,8 +341,7 @@ export function ProductDialog({
                     </Label>
                     <Input
                       placeholder="e.g. Apple"
-                      value={formData.brand}
-                      onChange={(e) => updateField("brand", e.target.value)}
+                      {...register("brand")}
                       className="h-11"
                     />
                   </div>
@@ -318,8 +351,7 @@ export function ProductDialog({
                     </Label>
                     <Input
                       placeholder="e.g. Apple Inc."
-                      value={formData.manufacturer}
-                      onChange={(e) => updateField("manufacturer", e.target.value)}
+                      {...register("manufacturer")}
                       className="h-11"
                     />
                   </div>
@@ -332,8 +364,7 @@ export function ProductDialog({
                     </Label>
                     <Input
                       placeholder="1.6 kg"
-                      value={formData.weight}
-                      onChange={(e) => updateField("weight", e.target.value)}
+                      {...register("weight")}
                       className="h-11"
                     />
                   </div>
@@ -343,8 +374,7 @@ export function ProductDialog({
                     </Label>
                     <Input
                       placeholder="31.26 × 22.12 × 1.55 cm"
-                      value={formData.dimensions}
-                      onChange={(e) => updateField("dimensions", e.target.value)}
+                      {...register("dimensions")}
                       className="h-11"
                     />
                   </div>
@@ -355,9 +385,8 @@ export function ProductDialog({
                     Description
                   </Label>
                   <Textarea
-                    placeholder="The latest MacBook Pro with the powerful M3 chip, featuring a stunning Liquid Retina XDR display."
-                    value={formData.description}
-                    onChange={(e) => updateField("description", e.target.value)}
+                    placeholder="The latest MacBook..."
+                    {...register("description")}
                     className="min-h-[100px] resize-none"
                   />
                 </div>
@@ -408,37 +437,31 @@ export function ProductDialog({
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
-                      Cost Price *
+                      BASE PRICE *
                     </Label>
                     <Input
                       type="number"
-                      placeholder="0.00"
-                      value={formData.costPrice}
-                      onChange={(e) => updateField("costPrice", e.target.value)}
+                      {...register("basePrice", { valueAsNumber: true })}
                       className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
-                      Selling Price *
+                      COST PRICE *
                     </Label>
                     <Input
                       type="number"
-                      placeholder="0.00"
-                      value={formData.sellingPrice}
-                      onChange={(e) => updateField("sellingPrice", e.target.value)}
+                      {...register("costPrice", { valueAsNumber: true })}
                       className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
-                      Compare at Price
+                      DISCOUNT PRICE
                     </Label>
                     <Input
                       type="number"
-                      placeholder="0.00"
-                      value={formData.comparePrice}
-                      onChange={(e) => updateField("comparePrice", e.target.value)}
+                      {...register("discountPrice", { valueAsNumber: true })}
                       className="h-11"
                     />
                   </div>
@@ -447,25 +470,21 @@ export function ProductDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
-                      Stock Quantity *
+                      STOCK UNITS *
                     </Label>
                     <Input
                       type="number"
-                      placeholder="0"
-                      value={formData.stock}
-                      onChange={(e) => updateField("stock", e.target.value)}
+                      {...register("stockUnits", { valueAsNumber: true })}
                       className="h-11"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
-                      Low Stock Alert
+                      LOW STOCK ALERT LEVEL
                     </Label>
                     <Input
                       type="number"
-                      placeholder="10"
-                      value={formData.minStock}
-                      onChange={(e) => updateField("minStock", e.target.value)}
+                      {...register("lowStockAlert", { valueAsNumber: true })}
                       className="h-11"
                     />
                   </div>
@@ -476,7 +495,20 @@ export function ProductDialog({
             {/* Media Tab */}
             {activeTab === "media" && (
               <div className="space-y-5">
-                <div className="rounded-xl border-2 border-dashed border-border p-12 text-center">
+                {/* hidden input */}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/png, image/jpeg"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
+                />
+
+                <div
+                  className="rounded-xl border-2 border-dashed border-border p-12 text-center cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <div className="flex justify-center mb-4">
                     <div className="rounded-full bg-muted p-4">
                       <Image className="h-8 w-8 text-muted-foreground" />
@@ -502,8 +534,7 @@ export function ProductDialog({
                   </Label>
                   <Input
                     placeholder="Product title for search engines"
-                    value={formData.metaTitle}
-                    onChange={(e) => updateField("metaTitle", e.target.value)}
+                    {...register("metaTitle")}
                     className="h-11"
                   />
                 </div>
@@ -513,20 +544,8 @@ export function ProductDialog({
                   </Label>
                   <Textarea
                     placeholder="Brief description for search results..."
-                    value={formData.metaDescription}
-                    onChange={(e) => updateField("metaDescription", e.target.value)}
+                    {...register("metaDescription")}
                     className="min-h-[100px] resize-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium uppercase text-muted-foreground">
-                    URL Slug
-                  </Label>
-                  <Input
-                    placeholder="product-url-slug"
-                    value={formData.slug}
-                    onChange={(e) => updateField("slug", e.target.value)}
-                    className="h-11"
                   />
                 </div>
               </div>
@@ -535,10 +554,14 @@ export function ProductDialog({
         </form>
 
         <DialogFooter className="border-t pt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Discard Changes
           </Button>
-          <Button onClick={handleSubmit}>
+          <Button type="submit" form="product-form">
             {mode === "edit" ? "Update Product" : "Save Product"}
           </Button>
         </DialogFooter>

@@ -1,13 +1,13 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Layers, 
-  Package, 
-  FileText, 
-  FileType, 
+import {
+  LayoutDashboard,
+  Users,
+  Layers,
+  Package,
+  FileText,
+  FileType,
   Settings,
-  LogOut
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,15 +30,12 @@ export function AdminSidebar({ className, onNavClick }: AdminSidebarProps) {
   const location = useLocation();
 
   return (
-    <aside className={cn("flex w-64 flex-col border-r border-sidebar-border bg-sidebar", className)}>
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-          N
-        </div>
-        <span className="text-lg font-semibold text-foreground">Nexus Admin</span>
-      </div>
-
+    <aside
+      className={cn(
+        "flex w-64 flex-col border-r border-sidebar-border bg-sidebar",
+        className,
+      )}
+    >
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-4">
         {menuItems.map((item) => {
@@ -52,10 +49,12 @@ export function AdminSidebar({ className, onNavClick }: AdminSidebarProps) {
                 "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
               )}
             >
-              <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
+              <item.icon
+                className={cn("h-5 w-5", isActive && "text-primary")}
+              />
               <span>{item.title}</span>
             </NavLink>
           );

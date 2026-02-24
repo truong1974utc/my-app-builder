@@ -4,7 +4,8 @@ import { Mail, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { authApi } from "@/services/auth.api";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -13,16 +14,26 @@ const LoginPage = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth()
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("SUBMIT CLICKED", { email, password });
     setIsLoading(true);
+    setError(null);
     
-    // Simulate login - replace with actual auth later
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const res = await authApi.login({ email, password });
+      console.log("Login successful:", res);
+      login(res);
+      console.log("CONSOLE LOGGING AUTH CONTEXT");
       navigate("/");
-    }, 1000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Login failed. Please try again.");
+      console.log("🔴 LOGIN ERROR:", err)
+    } finally {
+      setIsLoading(false);
+    }
   };
 
 
@@ -78,7 +89,6 @@ const LoginPage = () => {
 
           {/* Submit Button */}
           <Button 
-            onClick={() => login(email, password)}
             type="submit" 
             className="w-full h-12 text-base font-medium"
             disabled={isLoading}

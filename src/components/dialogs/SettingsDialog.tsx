@@ -1,25 +1,27 @@
 import { useState, useEffect } from "react";
 import { Settings, Info, X, Code } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 interface Setting {
   id: string;
-  key: string;
+  configKey: string;
   description: string;
-  value?: string;
+  configData: Record<string, any>;
 }
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setting: Setting | null;
-  onSubmit: (data: Omit<Setting, "id"> & { id?: string }) => void;
+  onSubmit: (data: {
+    id?: string;
+    configKey: string;
+    description: string;
+    configData: Record<string, any>;
+  }) => void;
 }
 
 export function SettingsDialog({
@@ -37,9 +39,9 @@ export function SettingsDialog({
 
   useEffect(() => {
     if (setting) {
-      setKey(setting.key);
+      setKey(setting.configKey);
       setDescription(setting.description);
-      setJsonValue(setting.value || "{\n\n}");
+      setJsonValue(JSON.stringify(setting.configData, null, 2));
     } else {
       setKey("");
       setDescription("");
@@ -61,12 +63,12 @@ export function SettingsDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValidJson) return;
-    
+
     onSubmit({
       id: setting?.id,
-      key,
+      configKey: key,
       description,
-      value: jsonValue,
+      configData: JSON.parse(jsonValue),
     });
     onOpenChange(false);
   };
@@ -130,7 +132,9 @@ export function SettingsDialog({
                 <Code className="h-4 w-4" />
                 Configuration Data (JSON)
               </Label>
-              <span className={`text-xs font-medium ${isValidJson ? "text-success" : "text-destructive"}`}>
+              <span
+                className={`text-xs font-medium ${isValidJson ? "text-success" : "text-destructive"}`}
+              >
                 {isValidJson ? "Valid Format" : "Invalid JSON"}
               </span>
             </div>
@@ -160,7 +164,11 @@ export function SettingsDialog({
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={!key.trim() || !isValidJson}>

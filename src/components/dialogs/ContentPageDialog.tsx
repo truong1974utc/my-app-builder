@@ -21,17 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-interface ContentPage {
-  id: string;
-  title: string;
-  slug: string;
-  content: string;
-  status: "PUBLISHED" | "DRAFT";
-  createdAt: string;
-  updatedAt: string;
-  featuredImage?: string;
-}
+import { ContentPage } from "@/types/page.type";
 
 interface ContentPageDialogProps {
   open: boolean;
@@ -61,7 +51,7 @@ export function ContentPageDialog({
   useEffect(() => {
     if (page) {
       setTitle(page.title);
-      setSlug(page.slug.replace("/pages/", ""));
+      setSlug(page.slug);
       setContent(page.content || "");
       setStatus(page.status);
       setFeaturedImage(page.featuredImage || null);
@@ -109,7 +99,7 @@ export function ContentPageDialog({
     onSubmit({
       id: page?.id,
       title,
-      slug: `/pages/${slug}`,
+      slug,
       content: contentRef.current?.innerHTML || content,
       status,
       featuredImage: featuredImage || undefined,

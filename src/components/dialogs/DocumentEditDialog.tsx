@@ -10,15 +10,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { DocumentItem } from "@/types/document.type";
 
 interface DocumentEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  document: {
-    id: string;
-    name: string;
-    type: string;
-  } | null;
+  document: DocumentItem | null;
   onSubmit: (data: { id: string; title: string }) => void;
 }
 
@@ -32,7 +29,7 @@ export function DocumentEditDialog({
 
   useEffect(() => {
     if (document) {
-      setTitle(document.name);
+      setTitle(document.title);
     }
   }, [document]);
 
@@ -81,7 +78,11 @@ export function DocumentEditDialog({
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={!title.trim()}>

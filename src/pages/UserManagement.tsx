@@ -21,15 +21,29 @@ import { usersService } from "@/services/users/user.service";
 import { PaginationMeta } from "@/types/pagination.type";
 import { PaginationLimit } from "@/enums/pagination.enum";
 import { usePagination } from "@/hooks/usePagination";
+import { useSearchParams } from "react-router-dom";
+import { useSearch } from "@/hooks/useSearchQuery";
+import { useSort } from "@/hooks/useSortQuery";
 
 const UserManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  /* ========= HOOK LOGIC ========= */
+  const { page, limit, setPage } = usePagination(1, PaginationLimit.TEN);
+  const { search, setSearch, debouncedSearch } = useSearch();
+  const sortByFromUrl = searchParams.get("sortBy") || undefined;
+  const sortOrderFromUrl = searchParams.get("sortOrder") as any;
+
+  const { sortBy, sortOrder } = useSort(sortByFromUrl, sortOrderFromUrl);
+
+  const role = searchParams.get("role") || undefined;
+  const status = searchParams.get("status") || undefined;
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const { page, limit, debouncedSearch, setPage, search, setSearch } =
-    usePagination(PaginationLimit.TEN);
 
   const [users, setUsers] = useState<User[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
@@ -37,13 +51,33 @@ const UserManagement = () => {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const params: Record<string, string> = {
+      page: String(page),
+      limit: String(limit),
+    };
+
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (role) params.role = role;
+    if (status) params.status = status;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.sortOrder = sortOrder;
+
+    setSearchParams(params);
+  }, [page, limit, debouncedSearch, role, status, sortBy, sortOrder]);
+
+  /* ========= FETCH ========= */
   const fetchUsers = async () => {
     setLoading(true);
     try {
       const res = await usersService.getUsers({
         page,
         limit,
-        search: debouncedSearch || undefined,
+        ...(debouncedSearch && { search: debouncedSearch }),
+        ...(role && { role }),
+        ...(status && { status }),
+        ...(sortBy && { sortBy }),
+        ...(sortOrder && { sortOrder }),
       });
 
       setUsers(res.data.items);
@@ -55,7 +89,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, debouncedSearch, role, status, sortBy, sortOrder]);
 
   const createUser = async (payload: {
     fullName: string;
@@ -99,12 +133,6 @@ const UserManagement = () => {
       setDeleteDialogOpen(false);
     }
   };
-
-  const filteredUsers = users.filter(
-    (user) =>
-      user.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      user.email.toLowerCase().includes(search.toLowerCase()),
-  );
 
   const handleAddUser = () => {
     setDialogMode("create");
@@ -162,7 +190,7 @@ const UserManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.map((user) => (
+            {users.map((user) => (
               <TableRow
                 key={user.id}
                 className="hover:bg-muted/30 transition-colors"
@@ -253,6 +281,7 @@ const UserManagement = () => {
 
       {/* User Dialog */}
       <UserDialog
+        key={dialogMode === "edit" ? selectedUser?.id : "create"}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={dialogMode}

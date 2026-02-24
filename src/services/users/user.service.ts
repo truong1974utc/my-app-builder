@@ -7,7 +7,7 @@ export interface GetUsersParams {
   limit: number;
   search?: string;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
+  sortOrder?: "ASC" | "DESC";
   role?: string;
   status?: string;
 }

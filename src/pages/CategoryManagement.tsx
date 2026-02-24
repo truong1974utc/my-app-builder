@@ -18,7 +18,6 @@ import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
 import { useToast } from "@/hooks/use-toast";
 import { categoriesService } from "@/services/categories/categoriy.service";
 
-import { s } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
 import { Pagination } from "@/components/common/Pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useSearch } from "@/hooks/useSearchQuery";
