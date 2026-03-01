@@ -16,333 +16,247 @@ import {
   CheckCircle,
   FileText,
 } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ContentPage } from "@/types/page.type";
+import { CreatePageFormValues, createPageSchema } from "@/schemas/page.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
 interface ContentPageDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  page: ContentPage | null;
-  onSubmit: (
-    data: Omit<ContentPage, "id" | "createdAt" | "updatedAt"> & { id?: string },
-  ) => void;
+  mode: "create" | "edit";
+  page?: ContentPage;
+  onSubmit: (data: CreatePageFormValues) => void;
 }
 
 export function ContentPageDialog({
   open,
   onOpenChange,
+  mode,
   page,
   onSubmit,
 }: ContentPageDialogProps) {
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [content, setContent] = useState("");
-  const [status, setStatus] = useState<"PUBLISHED" | "DRAFT">("DRAFT");
-  const [featuredImage, setFeaturedImage] = useState<string | null>(null);
+  const isEditing = mode === "edit";
+  const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 
-  const isEditing = !!page;
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CreatePageFormValues>({
+    resolver: zodResolver(createPageSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      content: "",
+      status: "DRAFT",
+      featuredImage: null,
+    },
+  });
+
+  const status = watch("status");
+  const featuredImage = watch("featuredImage");
 
   useEffect(() => {
-    if (page) {
-      setTitle(page.title);
-      setSlug(page.slug);
-      setContent(page.content || "");
-      setStatus(page.status);
-      setFeaturedImage(page.featuredImage || null);
-    } else {
-      setTitle("");
-      setSlug("");
-      setContent("");
-      setStatus("DRAFT");
-      setFeaturedImage(null);
-    }
-  }, [page, open]);
+    if (!open) return;
 
-  const generateSlug = (text: string) => {
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  };
-
-  const handleTitleChange = (value: string) => {
-    setTitle(value);
-    if (!isEditing && !slug) {
-      setSlug(generateSlug(value));
+    if (mode === "create") {
+      reset({
+        title: "",
+        slug: "",
+        content: "",
+        status: "DRAFT",
+        featuredImage: null,
+      });
     }
-  };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFeaturedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (mode === "edit" && page) {
+      reset({
+        title: page.title,
+        slug: page.slug,
+        content: page.content,
+        status: page.status,
+        featuredImage: page.featuredImage,
+      })
     }
+  }, [open, mode, page, reset]);
+
+  const submit = (data: CreatePageFormValues) => {
+    console.log("🔥 FORM SUBMIT TRIGGERED");
+    console.log("📦 DATA:", data);
+    onSubmit(data);
+    reset();
+    onOpenChange(false);
   };
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
-    contentRef.current?.focus();
+    editorRef.current?.focus();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      id: page?.id,
-      title,
-      slug,
-      content: contentRef.current?.innerHTML || content,
-      status,
-      featuredImage: featuredImage || undefined,
-    });
-    onOpenChange(false);
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    console.log("📁 FILE:", file);
+    console.log("📁 instanceof File:", file instanceof File);
+
+    setValue("featuredImage", file); // 🔥 LƯU FILE, KHÔNG LƯU BLOB STRING
+  };
+
+  const handleEditorInput = () => {
+    const html = editorRef.current?.innerHTML || "";
+    setValue("content", html);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[1100px] p-0 gap-0 max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <LayoutGrid className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {isEditing ? "Edit Content Page" : "Create New Page"}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Design and publish custom HTML pages for your platform.
-              </p>
-            </div>
+      <DialogContent className="max-w-[1200px] h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+
+        {/* HEADER */}
+        <div className="flex items-center gap-4 px-8 py-6 border-b bg-white">
+          <div className="h-12 w-12 flex items-center justify-center rounded-xl bg-primary text-white">
+            <LayoutGrid className="h-6 w-6" />
           </div>
-          {/* <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="h-5 w-5" />
-          </Button> */}
+          <div>
+            <DialogTitle className="text-xl font-semibold">
+              {isEditing ? "Edit Content Page" : "Create New Page"}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Design and publish custom HTML pages for your platform.
+            </DialogDescription>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 overflow-hidden">
-          {/* Main Content Area */}
-          <div className="flex-1 p-6 overflow-auto space-y-6">
-            {/* Page Title */}
+        <form
+          onSubmit={handleSubmit(submit)}
+          className="flex flex-1 overflow-hidden bg-muted/20"
+        >
+          {/* LEFT SIDE */}
+          <div className="flex-1 p-8 space-y-6 overflow-y-auto bg-white">
+
+            {/* TITLE */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase text-muted-foreground">
-                PAGE TITLE
+              <Label className="text-xs font-semibold tracking-wide">
+                PAGE TITLE *
               </Label>
               <Input
-                placeholder="Enter page title..."
-                value={title}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                className="h-12 text-lg"
-                required
+                placeholder="Enter a descriptive title..."
+                {...register("title")}
+                className="h-12 text-lg rounded-xl"
               />
             </div>
 
-            {/* Content Editor */}
+            {/* EDITOR */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase text-muted-foreground">
+              <Label className="text-xs font-semibold tracking-wide">
                 CONTENT EDITOR (HTML SUPPORTED) *
               </Label>
-              <div className="border rounded-lg overflow-hidden">
+
+              <div className="border rounded-2xl overflow-hidden">
                 {/* Toolbar */}
-                <div className="flex items-center gap-1 p-2 border-b bg-muted/30">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => execCommand("undo")}
-                  >
+                <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
+                  <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("undo")}>
                     <Undo className="h-4 w-4" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => execCommand("redo")}
-                  >
+                  <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("redo")}>
                     <Redo className="h-4 w-4" />
                   </Button>
-                  <div className="w-px h-5 bg-border mx-1" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => execCommand("bold")}
-                  >
+                  <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("bold")}>
                     <Bold className="h-4 w-4" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => execCommand("italic")}
-                  >
+                  <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("italic")}>
                     <Italic className="h-4 w-4" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => execCommand("strikeThrough")}
-                  >
-                    <Strikethrough className="h-4 w-4" />
-                  </Button>
-                  <div className="w-px h-5 bg-border mx-1" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => execCommand("insertUnorderedList")}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => execCommand("insertOrderedList")}
-                  >
-                    <ListOrdered className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      const url = prompt("Enter URL:");
-                      if (url) execCommand("createLink", url);
-                    }}
-                  >
-                    <Link className="h-4 w-4" />
-                  </Button>
                 </div>
-                {/* Editor */}
+
+                {/* Editable */}
                 <div
-                  ref={contentRef}
+                  ref={editorRef}
                   contentEditable
-                  className="min-h-[300px] p-4 focus:outline-none"
-                  dangerouslySetInnerHTML={{ __html: content }}
-                  onInput={(e) => setContent(e.currentTarget.innerHTML)}
+                  onInput={handleEditorInput}
+                  className="min-h-[400px] p-4 focus:outline-none"
+                  dangerouslySetInnerHTML={{ __html: watch("content") || "" }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="w-80 border-l p-6 space-y-6 bg-muted/30 overflow-auto">
-            {/* Publishing Details */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-primary" />
-                <Label className="text-xs font-medium uppercase">
-                  PUBLISHING DETAILS
-                </Label>
+          {/* RIGHT SIDEBAR */}
+          <div className="w-[360px] p-8 space-y-6 overflow-y-auto">
+
+            {/* Publishing Card */}
+            <div className="bg-white border rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="flex items-center gap-2 font-semibold">
+                <Globe className="h-4 w-4" />
+                Publishing Details
               </div>
 
-              {/* URL Slug */}
+              {/* SLUG */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
+                <Label className="text-xs font-semibold tracking-wide">
                   PERMANENT URL SLUG
                 </Label>
-                <div className="flex items-center gap-1 text-sm">
-                  <span className="text-muted-foreground">/pages/</span>
-                  <Input
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    className="h-8 text-primary"
-                    placeholder="page-slug"
-                  />
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-sm">
+                    /pages/
+                  </span>
+                  <Input {...register("slug")} className="rounded-xl" />
                 </div>
               </div>
 
-              {/* Page Status */}
+              {/* STATUS */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
+                <Label className="text-xs font-semibold tracking-wide">
                   PAGE STATUS
                 </Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
                     variant={status === "PUBLISHED" ? "default" : "outline"}
-                    className={cn(
-                      "flex-1 gap-2",
-                      status === "PUBLISHED" &&
-                        "bg-success hover:bg-success/90",
-                    )}
-                    onClick={() => setStatus("PUBLISHED")}
+                    className="w-full rounded-xl"
+                    onClick={() => setValue("status", "PUBLISHED")}
                   >
-                    <CheckCircle className="h-4 w-4" />
                     Published
                   </Button>
                   <Button
                     type="button"
-                    variant={status === "DRAFT" ? "default" : "outline"}
-                    className="flex-1 gap-2"
-                    onClick={() => setStatus("DRAFT")}
+                    variant={status === "DRAFT" ? "secondary" : "outline"}
+                    className="w-full rounded-xl"
+                    onClick={() => setValue("status", "DRAFT")}
                   >
-                    <FileText className="h-4 w-4" />
                     Draft
                   </Button>
                 </div>
               </div>
 
-              {/* Timestamps */}
-              {isEditing && page && (
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CREATED AT</span>
-                    <span className="text-foreground">{page.createdAt}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">LAST MODIFIED</span>
-                    <span className="text-foreground">{page.updatedAt}</span>
-                  </div>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div className="flex justify-between">
+                  <span>CREATED AT</span>
+                  <span>NOW</span>
                 </div>
-              )}
-              {!isEditing && (
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CREATED AT</span>
-                    <span className="text-foreground">NOW</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">LAST MODIFIED</span>
-                    <span className="text-foreground">NOW</span>
-                  </div>
+                <div className="flex justify-between">
+                  <span>LAST MODIFIED</span>
+                  <span>NOW</span>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Featured Image */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-primary" />
-                <Label className="text-xs font-medium uppercase">
-                  FEATURED IMAGE
-                </Label>
-              </div>
+            <div className="bg-white border rounded-2xl p-6 shadow-sm space-y-4">
+              <Label className="text-sm font-semibold">
+                Featured Image
+              </Label>
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -350,19 +264,23 @@ export function ContentPageDialog({
                 onChange={handleImageUpload}
                 className="hidden"
               />
+
               {featuredImage ? (
-                <div className="relative rounded-lg overflow-hidden border">
+                <div className="relative">
                   <img
-                    src={featuredImage}
-                    alt="Featured"
-                    className="w-full h-32 object-cover"
+                    src={
+                      featuredImage instanceof File
+                        ? URL.createObjectURL(featuredImage)
+                        : featuredImage
+                    }
+                    className="w-full h-40 object-cover rounded-xl"
                   />
                   <Button
                     type="button"
                     variant="destructive"
                     size="icon"
-                    className="absolute top-2 right-2 h-6 w-6"
-                    onClick={() => setFeaturedImage(null)}
+                    className="absolute top-2 right-2 rounded-full"
+                    onClick={() => setValue("featuredImage", null)}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -370,28 +288,24 @@ export function ContentPageDialog({
               ) : (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+                  className="h-40 border-2 border-dashed rounded-2xl flex items-center justify-center cursor-pointer text-muted-foreground hover:bg-muted/30 transition"
                 >
-                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
-                  <span className="text-sm text-muted-foreground">
+                  <div className="text-center">
+                    <Upload className="mx-auto mb-2 h-6 w-6" />
                     Click to upload
-                  </span>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </form>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+        {/* FOOTER */}
+        <div className="flex justify-end gap-4 px-8 py-6 border-t bg-white">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Discard Changes
           </Button>
-          <Button onClick={handleSubmit}>
+          <Button onClick={handleSubmit(submit)} className="px-8">
             {isEditing ? "Update Page" : "Publish Now"}
           </Button>
         </div>

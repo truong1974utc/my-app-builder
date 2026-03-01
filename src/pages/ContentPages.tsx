@@ -29,52 +29,80 @@ import { pagesService } from "@/services/pages/page.service";
 import { ContentPage } from "@/types/page.type";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSearchParams } from "react-router-dom";
+import { PaginationLimit } from "@/enums/pagination.enum";
 
 const ContentPages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-
+  const [pages, setPages] = useState<ContentPage[]>([]);
+  const [meta, setMeta] = useState<any>(null)
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const debouncedSearch = useDebounce(searchValue, 500);
   const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 10;
-
+  const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
   const search = searchParams.get("search") || undefined;
   const sortBy = searchParams.get("sortBy") || undefined;
-  const sortOrder = searchParams.get("sortOrder") || undefined;
-  const status = searchParams.get("status") || undefined;
-  const [pages, setPages] = useState<ContentPage[]>([]);
+  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC"
+  const status = searchParams.get("status") as "PUBLISHED" | "DRAFT";
+  const [mode, setMode] = useState<"create" | "edit">("create");
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (debouncedSearch?.trim())
+      params.set("search", debouncedSearch.trim());
+    else {
+      params.delete("search");
+    }
+    params.set("page", "1"); // Reset to first page on search
+    setSearchParams(params);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    let change = false;
+    if (!params.get("page")) {
+      params.set("page", "1");
+      change = true;
+    }
+    if (!params.get("limit")) {
+      params.set("limit", String(PaginationLimit.TEN));
+      change = true;
+    }
+    if (change) {
+      setSearchParams(params);
+    }
+  }, [searchParams]);
+
+  const fetchPages = async () => {
+    try {
+      const data = await pagesService.getPages(searchParams as any)
+      setPages(data.items)
+      setMeta(data.meta)
+    } catch (error) {
+      console.error("Failed to fetch pages:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!page || !limit) return;
+    fetchPages()
+  }, [searchParams])
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
+  };
+
+
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchTerm, setSearchTerm] = useState(search);
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState<ContentPage | null>(null);
   const [pageToDelete, setPageToDelete] = useState<ContentPage | null>(null);
   const { toast } = useToast();
-
-  const updateQuery = (newParams: Record<string, any>) => {
-    const params = new URLSearchParams(searchParams);
-
-    Object.entries(newParams).forEach(([key, value]) => {
-      if (!value) {
-        params.delete(key);
-      } else {
-        params.set(key, String(value));
-      }
-    });
-
-    setSearchParams(params);
-  };
-
-  useEffect(() => {
-    if (!searchParams.get("page") || !searchParams.get("limit")) {
-      const params = new URLSearchParams(searchParams);
-
-      if (!searchParams.get("page")) params.set("page", "1");
-      if (!searchParams.get("limit")) params.set("limit", "10");
-
-      setSearchParams(params, { replace: true });
-    }
-  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -84,74 +112,16 @@ const ContentPages = () => {
     });
   };
 
-  // Fetch pages from API
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-
-    let page = Number(params.get("page"));
-    let limit = Number(params.get("limit"));
-
-    // Nếu thiếu thì set luôn vào URL
-    if (!page) {
-      page = 1;
-      params.set("page", "1");
-    }
-
-    if (!limit) {
-      limit = 10;
-      params.set("limit", "10");
-    }
-
-    // Nếu URL vừa được bổ sung thì update lại và dừng
-    if (params.toString() !== searchParams.toString()) {
-      setSearchParams(params, { replace: true });
-      return;
-    }
-
-    const fetchPages = async () => {
-      try {
-        setLoading(true);
-
-        const response = await pagesService.getPages({
-          page,
-          limit,
-          search: params.get("search") || undefined,
-          sortBy: params.get("sortBy") || undefined,
-          sortOrder: params.get("sortOrder") as "ASC" | "DESC" | undefined,
-          status: params.get("status") as "PUBLISHED" | "DRAFT" | undefined,
-        });
-
-        if (response.success) {
-          setPages(response.data.items);
-          setTotalPages(response.data.meta.totalPages);
-        }
-      } catch {
-        toast({
-          title: "Error",
-          description: "Failed to load pages.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPages();
-  }, [searchParams]);
-  // Reset to page 1 when search term changes
-  useEffect(() => {
-    updateQuery({
-      search: debouncedSearchTerm || undefined,
-      page: 1,
-    });
-  }, [debouncedSearchTerm]);
 
   const handleCreateClick = () => {
+    setMode("create")
     setSelectedPage(null);
     setDialogOpen(true);
   };
 
   const handleEditClick = (page: ContentPage) => {
+    console.log("CLICK EDIT PAGE:", page); // 👈 NHÉT Ở ĐÂY
+    setMode("edit")
     setSelectedPage(page);
     setDialogOpen(true);
   };
@@ -161,48 +131,29 @@ const ContentPages = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleSubmit = async (
-    data: Omit<ContentPage, "id" | "createdAt" | "updatedAt"> & { id?: string },
-  ) => {
+  const handleSubmit = async (data: any) => {
+    console.log("🚀 HANDLE SUBMIT DATA:", data);
+    console.log("🚀 typeof featuredImage:", typeof data.featuredImage);
+    console.log("🚀 is File:", data.featuredImage instanceof File);
     try {
-      if (data.id) {
-        // Update existing
-        await pagesService.updatePage(data.id, {
-          id: data.id,
-          title: data.title,
-          slug: data.slug,
-          content: data.content,
-          status: data.status,
-          featuredImage: data.featuredImage,
+      if (mode === "create") {
+        await pagesService.createPage(data)
+        toast({
+          title: "Page created",
+          description: `${data.title} has been created.`,
         });
+      } else {
+        await pagesService.updatePage(selectedPage?.id, data)
+        console.log("EDIT DOCUMENT:", data);
         toast({
           title: "Page updated",
           description: `${data.title} has been updated.`,
         });
-      } else {
-        // Create new
-        await pagesService.createPage({
-          title: data.title,
-          slug: data.slug,
-          content: data.content,
-          status: data.status,
-          featuredImage: data.featuredImage,
-        });
-        toast({
-          title: "Page created",
-          description: `${data.title} has been published.`,
-        });
       }
-      // Refetch data to ensure consistency
-      const response = await pagesService.getPages({
-        page,
-        limit,
-        search: debouncedSearchTerm || undefined,
-      });
-      if (response.success) {
-        setPages(response.data.items);
-        setTotalPages(response.data.meta.totalPages);
-      }
+      setDialogOpen(false)
+      setSelectedPage(null)
+      setMode("create")
+      fetchPages()
     } catch (error) {
       console.error("Failed to save page:", error);
       toast({
@@ -211,38 +162,27 @@ const ContentPages = () => {
         variant: "destructive",
       });
     }
-  };
+  }
 
   const handleDeleteConfirm = async () => {
-    if (pageToDelete) {
-      try {
-        await pagesService.deletePage(pageToDelete.id);
-        toast({
-          title: "Page deleted",
-          description: `${pageToDelete.title} has been removed.`,
-        });
-        setPageToDelete(null);
-
-        // Refetch data to ensure consistency
-        const response = await pagesService.getPages({
-          page,
-          limit,
-          search: debouncedSearchTerm || undefined,
-        });
-        if (response.success) {
-          setPages(response.data.items);
-          setTotalPages(response.data.meta.totalPages);
-        }
-      } catch (error) {
-        console.error("Failed to delete page:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete page. Please try again.",
-          variant: "destructive",
-        });
-      }
+    try {
+      await pagesService.deletePage(pageToDelete?.id)
+      toast({
+        title: "Page deleted",
+        description: `${pageToDelete?.title} has been deleted.`,
+      });
+      setDeleteDialogOpen(false)
+      setPageToDelete(null)
+      fetchPages()
+    } catch (error) {
+      console.error("Failed to delete page:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete page. Please try again.",
+        variant: "destructive",
+      });
     }
-  };
+  }
 
   return (
     <div className="animate-fade-in">
@@ -257,8 +197,8 @@ const ContentPages = () => {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by title or slug..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -297,7 +237,7 @@ const ContentPages = () => {
                   colSpan={4}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  {searchTerm
+                  {searchValue
                     ? "No pages found matching your search."
                     : "No pages created yet."}
                 </TableCell>
@@ -386,12 +326,13 @@ const ContentPages = () => {
       {/* Pagination */}
       <Pagination
         page={page}
-        totalPages={totalPages}
-        onPageChange={(newPage) => updateQuery({ page: newPage })}
+        totalPages={meta?.totalPages}
+        onPageChange={handlePageChange}
       />
 
       {/* Content Page Dialog */}
       <ContentPageDialog
+        mode={mode}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         page={selectedPage}

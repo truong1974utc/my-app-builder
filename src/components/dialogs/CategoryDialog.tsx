@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CreateCategoryFormValues, createCategorySchema } from "@/schemas/category.schema";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface CategoryDialogProps {
   open: boolean;
@@ -20,7 +23,7 @@ interface CategoryDialogProps {
     name: string;
     description: string;
   };
-  onSubmit: (data: { name: string; description: string }) => void;
+  onSubmit: (data: CreateCategoryFormValues) => void;
 }
 
 export function CategoryDialog({
@@ -30,37 +33,59 @@ export function CategoryDialog({
   category,
   onSubmit,
 }: CategoryDialogProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const isEdit = mode === "edit";
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<CreateCategoryFormValues>({
+    resolver: zodResolver(createCategorySchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
 
   useEffect(() => {
-    if (category && mode === "edit") {
-      setName(category.name);
-      setDescription(category.description);
-    } else {
-      setName("");
-      setDescription("");
+    if (!open) return;
+
+    if (mode === "create") {
+      reset({
+        name: "",
+        description: "",
+      })
     }
-  }, [category, mode, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({ name, description });
-    onOpenChange(false);
+    if (mode === "edit" && category) {
+      reset({
+        name: category.name,
+        description: category.description,
+      })
+    }
+  }, [open, mode, category, reset])
+
+  const submit = async (data: CreateCategoryFormValues) => {
+    try {
+      await onSubmit(data);
+      onOpenChange(false);
+    } catch (err) {
+      console.log("Submit error:", err);
+    }
   };
-
-  const isEdit = mode === "edit";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="text-xl">
             {isEdit ? "Edit Category" : "Add New Category"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-4">
+        <form onSubmit={handleSubmit(submit)} className="space-y-5 pt-4">
           {/* Category Name */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">
@@ -68,11 +93,10 @@ export function CategoryDialog({
             </Label>
             <Input
               placeholder="e.g. Smart Home"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              {...register("name")}
               className="h-11"
-              required
             />
+            {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
           </div>
 
           {/* Description */}
@@ -82,8 +106,7 @@ export function CategoryDialog({
             </Label>
             <Textarea
               placeholder="Brief description of the category..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              {...register("description")}
               className="min-h-[120px] resize-none"
             />
           </div>

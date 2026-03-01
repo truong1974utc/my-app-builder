@@ -10,20 +10,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { DocumentItem } from "@/types/document.type";
+import { Document } from "@/types/document.type";
 
 interface DocumentEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  document: DocumentItem | null;
-  onSubmit: (data: { id: string; title: string }) => void;
+  document: Document | null;
 }
 
 export function DocumentEditDialog({
   open,
   onOpenChange,
   document,
-  onSubmit,
 }: DocumentEditDialogProps) {
   const [title, setTitle] = useState("");
 
@@ -36,7 +34,6 @@ export function DocumentEditDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (document) {
-      onSubmit({ id: document.id, title });
       onOpenChange(false);
     }
   };

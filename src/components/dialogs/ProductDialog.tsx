@@ -30,39 +30,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Product, Category } from "@/types/product.type";
+import { Product, Category, ProductDetail } from "@/types/product.type";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { productSchema } from "@/schemas/product.schema";
+import { CreateProductFormValues, createProductSchema } from "@/schemas/product.schema";
 
 interface ProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: any) => void;
-  product?: Product | null;
+  onSubmit: (data: CreateProductFormValues) => void;
+  product?: ProductDetail;
   mode?: "create" | "edit";
   categories?: Category[];
-}
-
-interface ProductFormValues {
-  sku: string;
-  barcode?: string;
-  name: string;
-  description?: string;
-  categoryId: string;
-  brand: string;
-  manufacturer: string;
-  weight?: string;
-  dimensions?: string;
-  basePrice: number;
-  costPrice: number;
-  discountPrice?: number;
-  stockUnits: number;
-  lowStockAlert?: number;
-  metaTitle?: string;
-  metaDescription?: string;
-  isFeatured: boolean;
-  images?: File[];
 }
 
 const tabs = [
@@ -77,13 +56,10 @@ export function ProductDialog({
   onOpenChange,
   onSubmit,
   product,
-  mode = "create",
+  mode,
   categories = [],
 }: ProductDialogProps) {
   const [activeTab, setActiveTab] = useState("general");
-  const [featured, setFeatured] = useState(false);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
@@ -92,8 +68,11 @@ export function ProductDialog({
     setValue,
     watch,
     reset,
-    formState: { errors },
-  } = useForm<ProductFormValues>({
+    formState: { errors, isValid },
+  } = useForm<CreateProductFormValues>({
+    resolver: zodResolver(createProductSchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues: {
       sku: "",
       barcode: "",
@@ -104,71 +83,55 @@ export function ProductDialog({
       manufacturer: "",
       weight: "",
       dimensions: "",
+      tags: [],
       basePrice: 0,
       costPrice: 0,
       discountPrice: 0,
       stockUnits: 0,
-      lowStockAlert: 5,
       metaTitle: "",
       metaDescription: "",
       isFeatured: false,
       images: [],
+      lowStockAlert: 0,
     },
   });
 
-  const handleAddTag = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && tagInput.trim() && tags.length < 8) {
-      e.preventDefault();
-      if (!tags.includes(tagInput.trim().toLowerCase())) {
-        setTags([...tags, tagInput.trim().toLowerCase()]);
-      }
-      setTagInput("");
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const fileArray = Array.from(files);
-
-    console.log("Selected files:", fileArray);
-
-    setValue("images", fileArray, {
-      shouldValidate: true,
-    });
-  };
-
-  const onFormSubmit = (data: ProductFormValues) => {
-    if (!data.categoryId) {
-      alert("Please select category");
-      return;
-    }
-
-    const payload = {
-      ...data,
-      isFeatured: featured,
-      tags,
-      images: [], // xử lý sau nếu cần
-    };
-
-    console.log("Form Submitted:", payload);
-
-    onSubmit(payload);
-  };
-
-  const basePrice = watch("basePrice") || 0;
-  const costPrice = watch("costPrice") || 0;
-
-  const margin =
-    costPrice > 0 ? Math.round(((basePrice - costPrice) / basePrice) * 100) : 0;
+  useEffect(() => {
+    register("images");
+  }, [register]);
 
   useEffect(() => {
-    if (open && product && mode === "edit") {
+    console.log("🧠 FORM STATE UPDATE");
+    console.log("isValid:", isValid);
+    console.log("errors:", errors);
+  }, [isValid, errors]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (mode === "create") {
+      reset({
+        sku: "",
+        barcode: "",
+        name: "",
+        description: "",
+        categoryId: "",
+        brand: "",
+        manufacturer: "",
+        weight: "",
+        dimensions: "",
+        tags: [],
+        basePrice: 0,
+        costPrice: 0,
+        discountPrice: 0,
+        stockUnits: 0,
+        metaTitle: "",
+        metaDescription: "",
+        isFeatured: false,
+        images: [],
+        lowStockAlert: 0,
+      });
+    }
+    if (mode === "edit" && product) {
       reset({
         sku: product.sku,
         barcode: product.barcode ?? "",
@@ -180,25 +143,74 @@ export function ProductDialog({
         weight: product.weight ?? "",
         dimensions: product.dimensions ?? "",
         basePrice: Number(product.basePrice),
-        costPrice: 0, // GET không trả về costPrice
+        costPrice: Number(product.costPrice), // GET không trả về costPrice
         discountPrice: Number(product.discountPrice ?? 0),
         stockUnits: product.stockUnits,
-        lowStockAlert: 5,
+        lowStockAlert: product.lowStockAlert,
         metaTitle: product.metaTitle ?? "",
         metaDescription: product.metaDescription ?? "",
         isFeatured: product.isFeatured,
-      });
+        tags: product.tags ?? [],
 
-      setFeatured(product.isFeatured);
-      setTags(product.tags ?? []);
-    }
 
-    if (open && mode === "create") {
-      reset();
-      setFeatured(false);
-      setTags([]);
+        images:
+          product.images?.map((img) => ({
+            id: img.id,
+            url: img.url,
+            isMain: img.isMain,
+          })) ?? [],
+      })
+      console.log("RESETTING WITH:", product.images);
     }
-  }, [open, product, mode, reset]);
+  }, [open, mode, product])
+
+  const submit = (data: CreateProductFormValues) => {
+    console.log("🚀 FINAL SUBMIT DATA:", data);
+    console.log("images instanceof Array:", Array.isArray(data.images));
+    console.log("first image instanceof File:", data.images?.[0] instanceof File);
+
+    onSubmit(data);
+    onOpenChange(false);
+  };
+
+  const handleAddTag = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      const value = e.currentTarget.value.trim().toLowerCase();
+
+      if (!value || tags.length >= 8 || tags.includes(value)) return;
+
+      setValue("tags", [...tags, value]);
+      e.currentTarget.value = "";
+      console.log("🏷 AFTER ADD:", watch("tags"));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+
+    const files = Array.from(e.target.files);
+
+    setValue("images", [...(watch("images") || []), ...files], {
+      shouldValidate: true,
+    });
+
+    // reset input để chọn lại cùng file vẫn trigger
+    e.target.value = "";
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setValue(
+      "tags",
+      tags.filter((tag) => tag !== tagToRemove)
+    );
+  };
+
+  const { basePrice = 0, costPrice = 0, tags = [], images = [] } = watch();
+
+  const margin =
+    costPrice > 0 ? Math.round(((basePrice - costPrice) / basePrice) * 100) : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -221,7 +233,7 @@ export function ProductDialog({
 
         <form
           id="product-form"
-          onSubmit={handleSubmit(onFormSubmit)}
+          onSubmit={handleSubmit(submit)}
           className="flex flex-1 gap-6 overflow-hidden"
         >
           {/* Left Sidebar - Tabs */}
@@ -276,7 +288,10 @@ export function ProductDialog({
                   </p>
                 </div>
               </div>
-              <Switch checked={featured} onCheckedChange={setFeatured} />
+              <Switch
+                checked={watch("isFeatured")}
+                onCheckedChange={(value) => setValue("isFeatured", value)}
+              />
             </div>
 
             {/* General Info Tab */}
@@ -287,7 +302,15 @@ export function ProductDialog({
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
                       Product Name *
                     </Label>
-                    <Input {...register("name")} className="h-11" />
+                    <Input
+                      {...register("name")}
+                      className={cn("h-11", errors.name && "border-destructive")}
+                    />
+                    {errors.name && (
+                      <p className="text-sm text-destructive">
+                        {errors.name.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
@@ -298,6 +321,11 @@ export function ProductDialog({
                       {...register("sku")}
                       className="h-11 font-mono"
                     />
+                    {errors.sku && (
+                      <p className="text-sm text-destructive">
+                        {errors.sku.message}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -318,7 +346,9 @@ export function ProductDialog({
                     </Label>
                     <Select
                       value={watch("categoryId")}
-                      onValueChange={(value) => setValue("categoryId", value)}
+                      onValueChange={(value) =>
+                        setValue("categoryId", value, { shouldValidate: true })
+                      }
                     >
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Select Category" />
@@ -331,6 +361,11 @@ export function ProductDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    {errors.categoryId && (
+                      <p className="text-sm text-destructive">
+                        {errors.categoryId.message}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -344,6 +379,11 @@ export function ProductDialog({
                       {...register("brand")}
                       className="h-11"
                     />
+                    {errors.brand && (
+                      <p className="text-sm text-destructive">
+                        {errors.brand.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
@@ -354,6 +394,11 @@ export function ProductDialog({
                       {...register("manufacturer")}
                       className="h-11"
                     />
+                    {errors.manufacturer && (
+                      <p className="text-sm text-destructive">
+                        {errors.manufacturer.message}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -416,12 +461,15 @@ export function ProductDialog({
                       ))}
                     </div>
                   )}
+                  {errors.tags && (
+                    <p className="text-sm text-destructive">
+                      {errors.tags.message}
+                    </p>
+                  )}
                   <div className="relative">
                     <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder="Press Enter to add tag"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={handleAddTag}
                       className="h-11 pl-10"
                       disabled={tags.length >= 8}
@@ -444,6 +492,11 @@ export function ProductDialog({
                       {...register("basePrice", { valueAsNumber: true })}
                       className="h-11"
                     />
+                    {errors.basePrice && (
+                      <p className="text-sm text-destructive">
+                        {errors.basePrice.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
@@ -454,6 +507,11 @@ export function ProductDialog({
                       {...register("costPrice", { valueAsNumber: true })}
                       className="h-11"
                     />
+                    {errors.costPrice && (
+                      <p className="text-sm text-destructive">
+                        {errors.costPrice.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
@@ -477,6 +535,11 @@ export function ProductDialog({
                       {...register("stockUnits", { valueAsNumber: true })}
                       className="h-11"
                     />
+                    {errors.stockUnits && (
+                      <p className="text-sm text-destructive">
+                        {errors.stockUnits.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground">
@@ -504,11 +567,37 @@ export function ProductDialog({
                   style={{ display: "none" }}
                   onChange={handleFileChange}
                 />
+                {errors.images && (
+                  <p className="text-sm text-destructive">
+                    {errors.images.message}
+                  </p>
+                )}
 
                 <div
                   className="rounded-xl border-2 border-dashed border-border p-12 text-center cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}
                 >
+                  {images.length > 0 && (
+                    <div className="grid grid-cols-4 gap-4 mt-6">
+                      {images?.map((img, index) => {
+                        let previewUrl = "";
+
+                        if (img instanceof File) {
+                          previewUrl = URL.createObjectURL(img);
+                        } else if (img?.url) {
+                          previewUrl = img.url;
+                        }
+
+                        return (
+                          <img
+                            key={index}
+                            src={previewUrl}
+                            alt="preview"
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
                   <div className="flex justify-center mb-4">
                     <div className="rounded-full bg-muted p-4">
                       <Image className="h-8 w-8 text-muted-foreground" />

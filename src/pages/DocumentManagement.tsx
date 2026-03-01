@@ -26,20 +26,85 @@ import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
 import { Pagination } from "@/components/common/Pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useToast } from "@/hooks/use-toast";
-import { useDebounce } from "@/hooks/useDebounce";
 import { documentService } from "@/services/documents/document.service";
-import { DocumentItem } from "@/types/document.type";
+import { Document, DocumentItem } from "@/types/document.type";
 import { useSearchParams } from "react-router-dom";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationLimit } from "@/enums/pagination.enum";
+import { CreateDocumentFormValues } from "@/schemas/document.schema";
 
 const DocumentManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [meta, setMeta] = useState<any>(null);
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const debouncedSearch = useDebounce(searchValue, 500);
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 10;
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const search = searchParams.get("search") || undefined;
+  const fileType = searchParams.get("fileType") || undefined;
+  const ownerId = searchParams.get("ownerId") || undefined;
+  const sortBy = searchParams.get("sortBy") || undefined;
+  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC" | undefined;
+  const [documentId, setDocumentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (debouncedSearch?.trim())
+      params.set("search", debouncedSearch.trim());
+    else {
+      params.delete("search");
+    }
+    params.set("page", "1"); // Reset to first page on search
+    setSearchParams(params);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    let change = false;
+    if (!params.get("page")) {
+      params.set("page", "1");
+      change = true;
+    }
+    if (!params.get("limit")) {
+      params.set("limit", String(PaginationLimit.TEN));
+      change = true;
+    }
+    if (change) {
+      setSearchParams(params);
+    }
+  }, [searchParams]);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const data = await documentService.getDocuments(searchParams as any);
+      setDocuments(data.items);
+      setMeta(data.meta);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load documents.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!page || !limit) return;
+    fetchDocuments();
+  }, [searchParams]);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
+  };
+
+
   const [loading, setLoading] = useState(true);
-  const [totalPages, setTotalPages] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
@@ -48,7 +113,10 @@ const DocumentManagement = () => {
   const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(
     null,
   );
-  const [documentToDelete, setDocumentToDelete] = useState<DocumentItem | null>(
+  const [selectedDocumentEdit, setSelectedDocumentEdit] = useState<Document | null>(
+    null,
+  );
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
     null,
   );
   const { toast } = useToast();
@@ -60,74 +128,54 @@ const DocumentManagement = () => {
     return <FileSpreadsheet className="h-5 w-5 text-info" />;
   };
 
-  // Fetch documents from API
-  useEffect(() => {
-    const currentPage = searchParams.get("page");
-    const currentLimit = searchParams.get("limit");
-
-    // Nếu thiếu page hoặc limit → thêm mặc định vào URL
-    if (!currentPage || !currentLimit) {
-      const params = new URLSearchParams(searchParams);
-
-      if (!currentPage) params.set("page", "1");
-      if (!currentLimit) params.set("limit", "10");
-
-      setSearchParams(params);
-      return; // đợi URL update rồi effect chạy lại
-    }
-
-    const fetchDocuments = async () => {
-      try {
-        setLoading(true);
-
-        const response = await documentService.getDocuments({
-          page: Number(currentPage),
-          limit: Number(currentLimit),
-          search: searchParams.get("search") || undefined,
-          sortBy: searchParams.get("sortBy") || undefined,
-          sortOrder: searchParams.get("sortOrder") as
-            | "ASC"
-            | "DESC"
-            | undefined,
-          fileType: searchParams.get("fileType") || undefined,
-          ownerId: searchParams.get("ownerId") || undefined,
-        });
-
-        if (response.success) {
-          setDocuments(response.data.items);
-          setTotalPages(response.data.meta.totalPages);
-        }
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load documents.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDocuments();
-  }, [searchParams]);
-
   const handleUpload = () => {
     setDialogOpen(true);
   };
 
-  const handlePreviewClick = (doc: DocumentItem) => {
-    setSelectedDocument(doc);
-    setPreviewDialogOpen(true);
+  const handleSubmitDocument = async (data: CreateDocumentFormValues) => {
+    try {
+      setLoading(true);
+      await documentService.createDocument({
+        title: data.title,
+        file: data.file,
+      });
+      toast({
+        title: "Document uploaded",
+        description: `${data.title} has been uploaded.`,
+      })
+      await fetchDocuments();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload document.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setDialogOpen(false);
+    }
   };
 
-  const handleEditClick = (doc: DocumentItem) => {
-    setSelectedDocument(doc);
+  const handlePreviewClick = async (id: string) => {
+    try {
+      setLoading(true);
+      const document = await documentService.getDocumentById(id);
+      setSelectedDocument(document);
+      setPreviewDialogOpen(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to preview document.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditClick = (doc: Document) => {
+    setSelectedDocumentEdit(doc);
     setEditDialogOpen(true);
-  };
-
-  const handleDeleteClick = (doc: DocumentItem) => {
-    setDocumentToDelete(doc);
-    setDeleteDialogOpen(true);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -146,136 +194,51 @@ const DocumentManagement = () => {
     });
   };
 
-  const handleEditSubmit = async (data: { id: string; title: string }) => {
+  const handleConfirmDelete = async () => {
+    if (!documentToDelete) return;
+
     try {
-      await documentService.updateDocument(data.id, {
-        title: data.title,
-      });
+      setLoading(true);
+      setDocumentId(documentToDelete.id);
+      await documentService.deleteDocument(documentToDelete.id);
       toast({
-        title: "Document updated",
-        description: `${data.title} has been updated.`,
+        title: "Document deleted",
+        description: `${documentToDelete?.title} has been deleted.`,
       });
-      // Refetch data
-      const response = await documentService.getDocuments({
-        page,
-        limit,
-        search: debouncedSearchTerm || undefined,
-        fileType: fileTypeFilter || undefined,
-      });
-      if (response.success) {
-        setDocuments(response.data.items);
-        setTotalPages(response.data.meta.totalPages);
-      }
+      await fetchDocuments();
     } catch (error) {
-      console.error("Failed to update document:", error);
       toast({
         title: "Error",
-        description: "Failed to update document. Please try again.",
+        description: "Failed to delete document.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+      setDocumentId(null);
     }
   };
 
-  const handleDocumentSubmit = async (data: {
-    file: File | null;
-    title: string;
-  }) => {
+  const handleDownload = async (doc: Document) => {
+    console.log("CLICK DOWNLOAD:", doc.id);
+
     try {
-      if (data.file) {
-        // Validate file
-        if (data.file.size > 5 * 1024 * 1024) {
-          toast({
-            title: "Error",
-            description: "File size must not exceed 5 MB.",
-            variant: "destructive",
-          });
-          return;
-        }
+      const blob = await documentService.downloadDocument(doc.id);
+      console.log("BLOB RECEIVED:", blob);
 
-        const formData = new FormData();
-        formData.append("title", data.title || data.file.name);
-        formData.append("file", data.file);
+      const url = window.URL.createObjectURL(blob);
+      console.log("BLOB URL:", url);
 
-        const response = await documentService.uploadDocument(formData);
-        if (response.success) {
-          toast({
-            title: "Document uploaded",
-            description: `${data.title} has been uploaded successfully.`,
-          });
-          setDialogOpen(false);
-          // Refetch data
-          const listResponse = await documentService.getDocuments({
-            page: 1,
-            limit,
-          });
-          if (listResponse.success) {
-            setDocuments(listResponse.data.items);
-            setTotalPages(listResponse.data.meta.totalPages);
-            searchParams.set("page", "1");
-            searchParams.set("limit", String(limit));
-            setSearchParams(searchParams);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Failed to upload document:", error);
-      toast({
-        title: "Error",
-        description: "Failed to upload document. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (documentToDelete) {
-      try {
-        await documentService.deleteDocument(documentToDelete.id);
-        toast({
-          title: "Document deleted",
-          description: `${documentToDelete.title} has been removed.`,
-        });
-        setDocumentToDelete(null);
-
-        // Refetch data
-        const response = await documentService.getDocuments({
-          page,
-          limit,
-          search: debouncedSearchTerm || undefined,
-          fileType: fileTypeFilter || undefined,
-        });
-        if (response.success) {
-          setDocuments(response.data.items);
-          setTotalPages(response.data.meta.totalPages);
-        }
-      } catch (error) {
-        console.error("Failed to delete document:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete document. Please try again.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const handleDownload = async (doc: DocumentItem) => {
-    try {
-      const response = await documentService.downloadDocument(doc.id);
-      const url = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", doc.fileName);
+      link.download = doc.fileName;
       document.body.appendChild(link);
       link.click();
-      link.parentElement?.removeChild(link);
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Failed to download document:", error);
-      toast({
-        title: "Error",
-        description: "Failed to download document. Please try again.",
-        variant: "destructive",
-      });
+      console.error("DOWNLOAD ERROR:", error);
     }
   };
 
@@ -291,16 +254,8 @@ const DocumentManagement = () => {
         <div className="flex-1 max-w-md">
           <Input
             placeholder="Search documents..."
-            value={searchParams.get("search") || ""}
-            onChange={(e) => {
-              if (e.target.value) {
-                searchParams.set("search", e.target.value);
-              } else {
-                searchParams.delete("search");
-              }
-              searchParams.set("page", "1");
-              setSearchParams(searchParams);
-            }}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             className="h-10"
           />
         </div>
@@ -340,7 +295,7 @@ const DocumentManagement = () => {
                   colSpan={5}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  {searchTerm
+                  {searchValue
                     ? "No documents found matching your search."
                     : "No documents uploaded yet."}
                 </TableCell>
@@ -381,7 +336,7 @@ const DocumentManagement = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => handlePreviewClick(doc)}
+                        onClick={() => handlePreviewClick(doc.id)}
                       >
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       </Button>
@@ -397,7 +352,10 @@ const DocumentManagement = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => handleDeleteClick(doc)}
+                        onClick={() => {
+                          setDocumentToDelete(doc);
+                          setDeleteDialogOpen(true);
+                        }}
                       >
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
@@ -421,19 +379,15 @@ const DocumentManagement = () => {
       {/* Pagination */}
       <Pagination
         page={page}
-        totalPages={totalPages}
-        onPageChange={(newPage) => {
-          searchParams.set("page", String(newPage));
-          searchParams.set("limit", String(limit));
-          setSearchParams(searchParams);
-        }}
+        totalPages={meta?.totalPages || 1}
+        onPageChange={handlePageChange}
       />
 
       {/* Upload Dialog */}
       <DocumentDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSubmit={handleDocumentSubmit}
+        onSubmit={handleSubmitDocument}
       />
 
       {/* Preview Dialog */}
@@ -447,8 +401,7 @@ const DocumentManagement = () => {
       <DocumentEditDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        document={selectedDocument}
-        onSubmit={handleEditSubmit}
+        document={selectedDocumentEdit}
       />
 
       {/* Delete Dialog */}
@@ -457,7 +410,7 @@ const DocumentManagement = () => {
         onOpenChange={setDeleteDialogOpen}
         title="Delete Document"
         itemName={documentToDelete?.title || ""}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

@@ -18,8 +18,8 @@ export interface GetUsersResponse {
 }
 
 export const usersService = {
-  getUsers(params: GetUsersParams) {
-    return axiosClient.get<{
+  async getUsers(params: GetUsersParams): Promise<GetUsersResponse> {
+    const response = await axiosClient.get<{
       success: boolean;
       data: GetUsersResponse;
     }>("/users", {
@@ -29,19 +29,24 @@ export const usersService = {
         Pragma: "no-cache",
       },
     });
+    if (!response.success) {
+      throw new Error("Failed to fetch users");
+    }
+    return response.data;
   },
 
-  createUser(payload: {
+  async createUser(payload: {
     fullName: string;
     email: string;
     password: string;
     role: string;
     status: string;
   }) {
-    return axiosClient.post("/users", payload);
+    const response = await axiosClient.post("/users", payload);
+    return response.data;
   },
 
-  updateUser(
+  async updateUser(
     id: string,
     payload: Partial<{
       fullName: string;
@@ -51,10 +56,12 @@ export const usersService = {
       status: string;
     }>,
   ) {
-    return axiosClient.put(`/users/${id}`, payload);
+    const response = await axiosClient.put(`/users/${id}`, payload);
+    return response.data;
   },
 
-  deleteUser(id: string) {
-    return axiosClient.delete(`/users/${id}`)
+  async deleteUser(id: string) {
+    const response = await axiosClient.delete(`/users/${id}`);
+    return response.data;
   },
-};
+}

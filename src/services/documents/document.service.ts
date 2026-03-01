@@ -1,70 +1,76 @@
 import axiosClient from "@/services/axiosClient";
-import { DocumentItem } from "@/types/document.type";
+import { DocumentItem, Document } from "@/types/document.type";
 import { PaginationMeta } from "@/types/pagination.type";
 
 export interface GetDocumentsParams {
   page: number;
   limit: number;
   search?: string;
-  fileType?: string;
+  fileType?: "PDF" | "DOCX" | "XLSX" | "JPG" | "PNG" | "WEBP";
   sortBy?: string;
   sortOrder?: "ASC" | "DESC";
   ownerId?: string;
 }
 
 export interface GetDocumentsResponse {
-  items: DocumentItem[];
+  items: Document[];
   meta: PaginationMeta;
 }
 
 export const documentService = {
-  getDocuments(params: GetDocumentsParams) {
-    return axiosClient.get<{
+  async getDocuments(params: GetDocumentsParams): Promise<GetDocumentsResponse> {
+    const response = await axiosClient.get<{
       success: boolean;
       data: GetDocumentsResponse;
-    }>("/documents", {
-      params,
-      headers: {
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-      },
-    });
+    }>("/documents", { params });
+    if (!response.success) {
+      throw new Error("Failed to fetch documents")
+    }
+    return response.data
   },
 
-  uploadDocument(formData: FormData) {
-    return axiosClient.post<{
-      success: boolean;
-      data: DocumentItem;
-    }>("/documents/upload", formData, {
+  async createDocument(payload: {
+    file: File;
+    title: string
+  }) {
+    const formData = new FormData()
+    formData.append("file", payload.file)
+    formData.append("title", payload.title)
+    const response = await axiosClient.post<{ success: boolean; data: Document }>("/documents", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    });
+    })
+    if (!response.success) {
+      throw new Error("Failed to create document")
+    }
+    return response.data
   },
 
-  getDocument(id: string) {
-    return axiosClient.get<{
-      success: boolean;
-      data: DocumentItem;
-    }>(`/documents/${id}`);
+  async deleteDocument(id: string) {
+    const response = await axiosClient.delete<{ success: boolean; data: Document }>(`/documents/${id}`)
+    if (!response.success) {
+      throw new Error("Failed to delete document")
+    }
+    return response.data
   },
 
-  updateDocument(id: string, payload: { title: string }) {
-    return axiosClient.put<{
-      success: boolean;
-      data: DocumentItem;
-    }>(`/documents/${id}`, payload);
+  async getDocumentById(id: string) {
+    const response = await axiosClient.get<{ success: boolean; data: DocumentItem }>(`/documents/${id}`)
+    if (!response.success) {
+      throw new Error("Failed to get document")
+    }
+    return response.data
   },
 
-  deleteDocument(id: string) {
-    return axiosClient.delete<{
-      success: boolean;
-    }>(`/documents/${id}`);
-  },
+  async downloadDocument(id: string) {
+    const response = await axiosClient.get(
+      `/documents/${id}/download`,
+      {
+        responseType: "blob", // QUAN TRỌNG
+      }
+    );
+    return response // trả blob
+  }
+}
 
-  downloadDocument(id: string) {
-    return axiosClient.get(`/documents/${id}/download`, {
-      responseType: 'blob',
-    });
-  },
-};

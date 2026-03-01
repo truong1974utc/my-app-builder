@@ -24,101 +24,108 @@ import { usePagination } from "@/hooks/usePagination";
 import { useSearchParams } from "react-router-dom";
 import { useSearch } from "@/hooks/useSearchQuery";
 import { useSort } from "@/hooks/useSortQuery";
+import { s } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
+import { set } from "date-fns";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const UserManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-
-  /* ========= HOOK LOGIC ========= */
-  const { page, limit, setPage } = usePagination(1, PaginationLimit.TEN);
-  const { search, setSearch, debouncedSearch } = useSearch();
-  const sortByFromUrl = searchParams.get("sortBy") || undefined;
-  const sortOrderFromUrl = searchParams.get("sortOrder") as any;
-
-  const { sortBy, sortOrder } = useSort(sortByFromUrl, sortOrderFromUrl);
-
-  const role = searchParams.get("role") || undefined;
-  const status = searchParams.get("status") || undefined;
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
-
   const [users, setUsers] = useState<User[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [searchValue, setSearchValue] = useState(
+    searchParams.get("search") || "",
+  );
+  const debouncedSearch = useDebounce(searchValue, 500);
 
   useEffect(() => {
-    const params: Record<string, string> = {
-      page: String(page),
-      limit: String(limit),
-    };
+    const params = new URLSearchParams(searchParams);
 
-    if (debouncedSearch) params.search = debouncedSearch;
-    if (role) params.role = role;
-    if (status) params.status = status;
-    if (sortBy) params.sortBy = sortBy;
-    if (sortOrder) params.sortOrder = sortOrder;
+    if (debouncedSearch?.trim()) {
+      params.set("search", debouncedSearch.trim());
+    } else {
+      params.delete("search");
+    }
+
+    params.set("page", "1"); // reset page khi search
 
     setSearchParams(params);
-  }, [page, limit, debouncedSearch, role, status, sortBy, sortOrder]);
+  }, [debouncedSearch]);
 
-  /* ========= FETCH ========= */
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    let change = false;
+    if (!params.get("page")) {
+      params.set("page", "1");
+      change = true;
+    }
+    if (!params.get("limit")) {
+      params.set("limit", String(PaginationLimit.TEN));
+      change = true;
+    }
+    if (change) {
+      setSearchParams(params);
+    }
+  }, [searchParams]);
+
+  const page = Number(searchParams.get("page")) || 1;
+  const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
+  const search = searchParams.get("search") || undefined;
+  const sortBy = searchParams.get("sortBy") || undefined;
+  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC" | undefined;
+  const role = searchParams.get("role") || undefined;
+  const status = searchParams.get("status") || undefined;
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+
   const fetchUsers = async () => {
-    setLoading(true);
     try {
-      const res = await usersService.getUsers({
-        page,
-        limit,
-        ...(debouncedSearch && { search: debouncedSearch }),
-        ...(role && { role }),
-        ...(status && { status }),
-        ...(sortBy && { sortBy }),
-        ...(sortOrder && { sortOrder }),
-      });
+      setLoading(true);
 
-      setUsers(res.data.items);
-      setMeta(res.data.meta);
+      const data = await usersService.getUsers(searchParams as any);
+
+      setUsers(data.items);
+      setMeta(data.meta);
+    } catch (error) {
+      console.log("FETCH ERROR", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!page || !limit) return;
     fetchUsers();
-  }, [page, limit, debouncedSearch, role, status, sortBy, sortOrder]);
+  }, [searchParams]);
 
-  const createUser = async (payload: {
-    fullName: string;
-    email: string;
-    password: string;
-    role: string;
-    status: string;
-  }) => {
-    try {
-      await usersService.createUser(payload);
-      await fetchUsers();
-    } finally {
-    }
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
   };
 
-  const updateUser = async (
-    id: string,
-    payload: {
-      fullName: string;
-      email: string;
-      password?: string;
-    },
-  ) => {
+  const handleSubmitUser = async (data: any) => {
     try {
-      await usersService.updateUser(id, payload);
+      if (dialogMode === "create") {
+        await usersService.createUser(data);
+      }
+
+      if (dialogMode === "edit" && selectedUser) {
+        await usersService.updateUser(selectedUser?.id, data);
+      }
+
       await fetchUsers();
-    } finally {
+
+    } catch (error) {
+      console.log("ERROR", error);
     }
-  };
+  }
+
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
@@ -159,8 +166,8 @@ const UserManagement = () => {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search users..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -169,12 +176,6 @@ const UserManagement = () => {
           Add User
         </Button>
       </div>
-
-      {loading && (
-        <div className="py-10 text-center text-muted-foreground">
-          Loading users...
-        </div>
-      )}
 
       {/* Table */}
       <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
@@ -190,46 +191,56 @@ const UserManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-              <TableRow
-                key={user.id}
-                className="hover:bg-muted/30 transition-colors"
-              >
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-muted text-muted-foreground font-medium">
-                        {user.avatarUrl}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {user.fullName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {user.email}
-                      </p>
-                    </div>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-10">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Loading users...
                   </div>
                 </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      user.role === "SUPER_ADMIN" ? "default" : "secondary"
-                    }
-                  >
-                    {user.role}
-                  </Badge>
+              </TableRow>
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                  No users found.
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        user.status === "ACTIVE"
-                          ? "bg-success"
-                          : "bg-muted-foreground"
-                      }`}
-                    />
+              </TableRow>
+            ) : (
+              users.map((user) => (
+                <TableRow
+                  key={user.id}
+                  className="hover:bg-muted/30 transition-colors"
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback>
+                          {user.fullName?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{user.fullName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge
+                      variant={
+                        user.role === "SUPER_ADMIN"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {user.role}
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell>
                     <span
                       className={
                         user.status === "ACTIVE"
@@ -239,36 +250,36 @@ const UserManagement = () => {
                     >
                       {user.status}
                     </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleEditUser(user)}
-                    >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    {user.role !== "SUPER_ADMIN" && (
+                  </TableCell>
+
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        disabled={deletingId === user.id}
-                        className="h-8 w-8"
-                        onClick={() => {
-                          setUserToDelete(user);
-                          setDeleteDialogOpen(true);
-                        }}
+                        onClick={() => handleEditUser(user)}
                       >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+
+                      {user.role !== "SUPER_ADMIN" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={deletingId === user.id}
+                          onClick={() => {
+                            setUserToDelete(user);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -276,42 +287,16 @@ const UserManagement = () => {
       <Pagination
         page={page}
         totalPages={meta?.totalPages || 1}
-        onPageChange={setPage}
+        onPageChange={handlePageChange}
       />
 
       {/* User Dialog */}
       <UserDialog
-        key={dialogMode === "edit" ? selectedUser?.id : "create"}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
         mode={dialogMode}
-        user={selectedUser || undefined}
-        onSubmit={async (data) => {
-          if (dialogMode === "create") {
-            await createUser({
-              fullName: data.name,
-              email: data.email,
-              password: data.password,
-              role: "ADMIN",
-              status: "ACTIVE",
-            });
-          }
-
-          if (dialogMode === "edit" && selectedUser) {
-            const payload: any = {
-              fullName: data.name,
-              email: data.email,
-            };
-
-            if (data.password?.trim()) {
-              payload.password = data.password;
-            }
-
-            await updateUser(selectedUser.id, payload);
-          }
-
-          setDialogOpen(false);
-        }}
+        user={selectedUser}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleSubmitUser}
       />
 
       {/* Delete Dialog */}

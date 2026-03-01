@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Upload, Info, FilePlus } from "lucide-react";
 import {
   Dialog,
@@ -11,69 +11,104 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import {
+  createDocumentSchema,
+  CreateDocumentFormValues,
+} from "@/schemas/document.schema";
 
 interface DocumentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: { file: File | null; title: string }) => void;
+  onSubmit: (data: CreateDocumentFormValues) => Promise<void> | void;
 }
 
-export function DocumentDialog({ open, onOpenChange, onSubmit }: DocumentDialogProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
+export function DocumentDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+}: DocumentDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CreateDocumentFormValues>({
+    resolver: zodResolver(createDocumentSchema),
+    defaultValues: {
+      file: undefined,
+      title: "",
+    },
+  });
+
+  const watchedFile = watch("file");
+
+  useEffect(() => {
+    if (!open) return;
+    reset({
+      file: undefined,
+      title: "",
+    });
+  }, [open, reset]);
+
+  const submit = async (data: CreateDocumentFormValues) => {
+    try {
+      await onSubmit(data);
+    } catch (err) {
+      console.error("onSubmit error:", err);
+    }
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      setFile(droppedFile);
-      if (!title) {
-        setTitle(droppedFile.name.replace(/\.[^/.]+$/, ""));
-      }
-    }
-  };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      if (!title) {
-        setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
-      }
-    }
-  };
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (!droppedFile) return;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({ file, title });
-    onOpenChange(false);
-    setFile(null);
-    setTitle("");
+    setValue("file", droppedFile, { shouldValidate: true });
+
+    if (!watch("title")) {
+      setValue(
+        "title",
+        droppedFile.name.replace(/\.[^/.]+$/, "")
+      );
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle className="text-xl">Upload New Document</DialogTitle>
+          <DialogTitle className="text-xl">
+            Upload New Document
+          </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-          {/* Info Banner */}
+        <form
+          onSubmit={handleSubmit(submit)}
+          className="space-y-5 pt-4"
+        >
+          {/* Info */}
           <div className="flex items-start gap-3 rounded-lg bg-primary/10 p-4">
             <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-primary">
-                Supported formats: PDF, DOCX, XLSX, JPG.
+                Supported formats: PDF, DOCX, XLSX, JPG, PNG
               </p>
-              <p className="text-primary/80">Maximum file size: 5MB.</p>
+              <p className="text-primary/80">
+                Maximum file size: 5MB
+              </p>
             </div>
           </div>
 
-          {/* Drop Zone */}
+          {/* Drop zone */}
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -90,21 +125,38 @@ export function DocumentDialog({ open, onOpenChange, onSubmit }: DocumentDialogP
             )}
           >
             <input
-              ref={fileInputRef}
               type="file"
-              onChange={handleFileSelect}
               accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
               className="hidden"
+              {...register("file")}
+              ref={(e) => {
+                register("file").ref(e);   // giữ ref của RHF
+                fileInputRef.current = e;  // giữ ref của mình
+              }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                console.log("Selected file:", file);
+
+                setValue("file", file, { shouldValidate: true });
+
+                if (!watch("title")) {
+                  setValue("title", file.name.replace(/\.[^/.]+$/, ""));
+                }
+              }}
             />
-            
-            {file ? (
+
+            {watchedFile ? (
               <div className="flex flex-col items-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 mb-3">
                   <FileText className="h-6 w-6 text-primary" />
                 </div>
-                <p className="font-medium text-foreground">{file.name}</p>
+                <p className="font-medium text-foreground">
+                  {watchedFile.name}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                  {(watchedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
             ) : (
@@ -112,32 +164,49 @@ export function DocumentDialog({ open, onOpenChange, onSubmit }: DocumentDialogP
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 mb-3">
                   <FilePlus className="h-6 w-6 text-primary" />
                 </div>
-                <p className="font-medium text-foreground">Click to select file</p>
-                <p className="text-sm text-muted-foreground">or drag and drop here</p>
+                <p className="font-medium text-foreground">
+                  Click to select file
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  or drag and drop here
+                </p>
               </>
             )}
           </div>
 
-          {/* Document Title */}
+          {errors.file && (
+            <p className="text-xs text-destructive">
+              {errors.file.message as string}
+            </p>
+          )}
+
+          {/* Title */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
               <FileText className="h-3.5 w-3.5" />
-              Document Title *
+              Document Title
             </Label>
             <Input
               placeholder="e.g. Q4 Financial Report"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
               className="h-11"
-              required
+              {...register("title")}
             />
+            {errors.title && (
+              <p className="text-xs text-destructive">
+                {errors.title.message}
+              </p>
+            )}
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={!file || !title}>
+            <Button type="submit">
               <Upload className="h-4 w-4 mr-2" />
               Upload Document
             </Button>

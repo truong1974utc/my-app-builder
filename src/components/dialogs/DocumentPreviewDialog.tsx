@@ -1,4 +1,4 @@
-import { Printer, Share2, Download, X } from "lucide-react";
+import { Printer, Share2, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DocumentItem } from "@/types/document.type";
+import { documentService } from "@/services/documents/document.service";
+
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 interface DocumentPreviewDialogProps {
   open: boolean;
@@ -20,100 +23,134 @@ export function DocumentPreviewDialog({
 }: DocumentPreviewDialogProps) {
   if (!document) return null;
 
-  const getFileTypeColor = (type: string) => {
-    if (type.includes("PDF")) return "bg-destructive/10 text-destructive";
-    if (type.includes("DOCX")) return "bg-info/10 text-info";
-    if (type.includes("XLSX")) return "bg-success/10 text-success";
-    return "bg-muted text-muted-foreground";
+  const previewSrc = `${BASE_URL}${document.previewUrl}`;
+  const handleDownload = async (doc: DocumentItem) => {
+    try {
+      const file = await documentService.downloadDocument(doc.id);
+
+      const blob = file instanceof Blob ? file : file?.data;
+      if (!blob) return;
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = window.document.createElement("a"); // 👈 FIX
+      link.href = url;
+      link.download = doc.fileName || "downloaded-file";
+
+      window.document.body.appendChild(link); // 👈 FIX
+      link.click();
+
+      window.document.body.removeChild(link); // 👈 FIX
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("DOWNLOAD ERROR:", error);
+    }
   };
 
-  const getFileTypeBadge = (type: string) => {
-    if (type.includes("PDF")) return "PDF";
-    if (type.includes("DOCX")) return "DOCX";
-    if (type.includes("XLSX")) return "XLSX";
-    return "FILE";
-  };
+  const isImage =
+    document.fileType.includes("JPG") ||
+    document.fileType.includes("PNG") ||
+    document.fileType.includes("JPEG");
+
+  const isPDF = document.fileType.includes("PDF");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] p-0 gap-0 max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b">
+      <DialogContent className="sm:max-w-[1000px] p-0 gap-0 max-h-[90vh] overflow-hidden rounded-2xl">
+
+        {/* HEADER */}
+        <div className="flex items-start justify-between p-6 border-b bg-background">
           <div className="flex items-start gap-4">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${getFileTypeColor(document.fileType)}`}>
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              📄
             </div>
+
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-foreground">{document.owner.fullName}</h2>
-                <Badge variant="secondary" className="text-xs">
-                  {getFileTypeBadge(document.fileType)}
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">
+                  {document.title}
+                </h2>
+
+                <Badge variant="secondary">
+                  {document.fileType}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Added by {document.owner.fullName} • {document.fileSize}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Printer className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Share2 className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Download className="h-4 w-4" />
-            </Button>
-            {/* <Button
-              variant="default"
-              size="icon"
-              className="h-9 w-9 rounded-full bg-foreground hover:bg-foreground/90"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-4 w-4 text-background" />
-            </Button> */}
-          </div>
-        </div>
 
-        {/* Document Preview Area */}
-        <div className="p-6 min-h-[500px] bg-muted/30 overflow-auto">
-          <div className="bg-background rounded-lg shadow-sm border p-8 min-h-[450px]">
-            {/* Skeleton lines to simulate document content */}
-            <div className="space-y-4">
-              <div className="h-4 bg-primary/20 rounded w-3/4" />
-              <div className="h-4 bg-muted rounded w-full" />
-              <div className="h-4 bg-muted rounded w-5/6" />
-              <div className="h-4 bg-muted rounded w-4/5" />
-              <div className="h-4 bg-muted rounded w-full" />
-              <div className="h-8" />
-              <div className="h-4 bg-muted rounded w-full" />
-              <div className="h-4 bg-muted rounded w-3/4" />
-              <div className="h-4 bg-primary/20 rounded w-1/2" />
-              <div className="h-8" />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="h-24 bg-muted/50 rounded border" />
-                <div className="h-24 bg-muted/50 rounded border" />
+              <div className="text-sm text-muted-foreground mt-1 space-y-1">
+                <p>File: {document.fileName}</p>
+                <p>Size: {document.fileSizeFormatted}</p>
+                <p>
+                  Owner: {document.owner.fullName} ({document.owner.email})
+                </p>
+                <p>
+                  Created: {new Date(document.createdAt).toLocaleString()}
+                </p>
               </div>
             </div>
           </div>
+
+          {/* ACTION BUTTONS */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon">
+              <Printer className="h-4 w-4" />
+            </Button>
+
+            <Button variant="ghost" size="icon">
+              <Share2 className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDownload(document)}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
-        {/* Footer */}
+        {/* PREVIEW BODY */}
+        <div className="flex items-center justify-center h-[600px] bg-muted/20 px-6 overflow-auto">
+
+          {isImage && (
+            <img
+              src={previewSrc}
+              alt="preview"
+              className="max-h-[550px] object-contain rounded-xl shadow-lg"
+            />
+          )}
+
+          {isPDF && (
+            <iframe
+              src={previewSrc}
+              className="w-full h-[550px] rounded-xl shadow-lg"
+            />
+          )}
+
+          {!isImage && !isPDF && (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                Preview not available
+              </p>
+              <p className="text-xs font-mono break-all">
+                {previewSrc}
+              </p>
+            </div>
+          )}
+
+        </div>
+
+        {/* FOOTER */}
         <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
           <p className="text-xs text-muted-foreground">
-            SYSTEM: NEXUS CLOUD STORAGE &nbsp;&nbsp; REGION: US-EAST-1
+            NEXUS CLOUD STORAGE
           </p>
-          <p className="text-xs text-destructive font-medium">
-            CONFIDENTIAL • ENTERPRISE ONLY
+          <p className="text-xs text-primary font-medium">
+            CONFIDENTIAL • ENTERPRISE
           </p>
         </div>
+
       </DialogContent>
     </Dialog>
   );

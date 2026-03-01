@@ -4,72 +4,76 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-
-interface Setting {
-  id: string;
-  configKey: string;
-  description: string;
-  configData: Record<string, any>;
-}
+import { CreateSettingFormValues, UpdateSettingFormValues } from "@/schemas/setting.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { createSettingSchema, updateSettingSchema } from "@/schemas/setting.schema";
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  setting: Setting | null;
-  onSubmit: (data: {
-    id?: string;
+  mode: "create" | "edit";
+  setting: {
+    id: string;
     configKey: string;
     description: string;
     configData: Record<string, any>;
-  }) => void;
+  };
+  onSubmit: (data: CreateSettingFormValues | UpdateSettingFormValues) => void;
 }
 
 export function SettingsDialog({
   open,
   onOpenChange,
+  mode,
   setting,
   onSubmit,
 }: SettingsDialogProps) {
+  const isEdit = mode === "edit";
   const [key, setKey] = useState("");
   const [description, setDescription] = useState("");
   const [jsonValue, setJsonValue] = useState("{\n\n}");
   const [isValidJson, setIsValidJson] = useState(true);
-
   const isEditing = !!setting;
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<CreateSettingFormValues | UpdateSettingFormValues>({
+    resolver: zodResolver(isEdit ? updateSettingSchema : createSettingSchema),
+    defaultValues: {
+      configKey: "",
+      description: "",
+      configData: "",
+    },
+  });
+
   useEffect(() => {
-    if (setting) {
-      setKey(setting.configKey);
-      setDescription(setting.description);
-      setJsonValue(JSON.stringify(setting.configData, null, 2));
-    } else {
-      setKey("");
-      setDescription("");
-      setJsonValue("{\n\n}");
+    if (!open) return;
+
+    if (mode === "create") {
+      reset({
+        configKey: "",
+        description: "",
+        configData: "",
+      });
     }
-    setIsValidJson(true);
-  }, [setting, open]);
 
-  const validateJson = (value: string) => {
-    try {
-      JSON.parse(value);
-      setIsValidJson(true);
-    } catch {
-      setIsValidJson(false);
+    if (mode === "edit" && setting) {
+      reset({
+        configKey: setting.configKey,
+        description: setting.description,
+        configData: JSON.stringify(setting.configData, null, 2),
+      });
     }
-    setJsonValue(value);
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isValidJson) return;
+  }, [open, mode, setting, reset]);
 
-    onSubmit({
-      id: setting?.id,
-      configKey: key,
-      description,
-      configData: JSON.parse(jsonValue),
-    });
+  const submit = (data: CreateSettingFormValues | UpdateSettingFormValues) => {
+    onSubmit(data);
     onOpenChange(false);
   };
 
@@ -101,15 +105,14 @@ export function SettingsDialog({
           </Button> */}
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit(submit)} className="p-6 space-y-6">
           {/* Key and Description Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-medium">Configuration Key</Label>
               <Input
                 placeholder="e.g. system_maintenance_mode"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
+                {...register("configKey")}
                 className="h-11 font-mono text-sm"
                 required
               />
@@ -118,8 +121,7 @@ export function SettingsDialog({
               <Label className="text-sm font-medium">Short Description</Label>
               <Input
                 placeholder="What does this config do?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                {...register("description")}
                 className="h-11"
               />
             </div>
@@ -140,8 +142,7 @@ export function SettingsDialog({
             </div>
             <div className="relative">
               <textarea
-                value={jsonValue}
-                onChange={(e) => validateJson(e.target.value)}
+                {...register("configData")}
                 className="w-full min-h-[200px] p-4 font-mono text-sm bg-[#1e1e2e] text-[#cdd6f4] rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 placeholder='{\n  "key": "value"\n}'
                 spellCheck={false}
@@ -171,8 +172,8 @@ export function SettingsDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!key.trim() || !isValidJson}>
-              {isEditing ? "Update Config" : "Save Setting"}
+            <Button type="submit">
+              {isEdit ? "Update Config" : "Save Setting"}
             </Button>
           </div>
         </form>

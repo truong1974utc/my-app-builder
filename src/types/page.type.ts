@@ -6,7 +6,7 @@ export interface ContentPage {
   status: "PUBLISHED" | "DRAFT";
   createdAt: string;
   updatedAt: string;
-  featuredImage?: string;
+  featuredImage?: File
 }
 
 export interface CreatePagePayload {

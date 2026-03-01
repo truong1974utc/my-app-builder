@@ -17,141 +17,150 @@ import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
 import { systemSettingService } from "@/services/settings/setting.service";
 import { PaginationMeta } from "@/types/pagination.type";
-
-interface Setting {
-  id: string;
-  configKey: string;
-  description: string;
-  configData: Record<string, any>;
-  createdAt: string;
-  updatedAt: string;
-}
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationLimit } from "@/enums/pagination.enum";
+import { Pagination } from "@/components/common/Pagination";
+import { SettingItem } from "@/types/setting.type";
+import { CreateSettingFormValues, UpdateSettingFormValues } from "@/schemas/setting.schema";
 
 const SettingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-
+  const [settings, setSettings] = useState<SettingItem[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const debouncedSearch = useDebounce(searchValue, 500);
   const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 10;
+  const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
   const search = searchParams.get("search") || undefined;
   const sortBy = searchParams.get("sortBy") || undefined;
-  const sortOrder =
-    (searchParams.get("sortOrder") as "ASC" | "DESC") || undefined;
-
-  const [settings, setSettings] = useState<Setting[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedSetting, setSelectedSetting] = useState<Setting | null>(null);
-  const [settingToDelete, setSettingToDelete] = useState<Setting | null>(null);
-  const { toast } = useToast();
+  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC" | undefined;
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
+  const [selectedSetting, setSelectedSetting] = useState<SettingItem | null>(null);
 
   useEffect(() => {
-    fetchSettings();
+    const params = new URLSearchParams(searchParams);
+    if (debouncedSearch?.trim())
+      params.set("search", debouncedSearch.trim());
+    else {
+      params.delete("search");
+    }
+    params.set("page", "1"); // Reset to first page on search
+    setSearchParams(params);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    let change = false;
+    if (!params.get("page")) {
+      params.set("page", "1");
+      change = true;
+    }
+    if (!params.get("limit")) {
+      params.set("limit", String(PaginationLimit.TEN));
+      change = true;
+    }
+    if (change) {
+      setSearchParams(params);
+    }
   }, [searchParams]);
 
   const fetchSettings = async () => {
     try {
-      const params: any = {
-        page,
-        limit,
-      };
-
-      if (search) params.search = search;
-      if (sortBy) params.sortBy = sortBy;
-      if (sortOrder) params.sortOrder = sortOrder;
-
-      const res = await systemSettingService.getSystemSettings(params);
-
-      setSettings(res.data.items);
-      setMeta(res.data.meta);
+      setLoading(true);
+      const data = await systemSettingService.getSystemSettings(searchParams as any);
+      setSettings(data.items);
+      setMeta(data.meta);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to fetch settings",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!page || !limit) return;
+    fetchSettings();
+  }, [searchParams]);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
+  };
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [settingToDelete, setSettingToDelete] = useState<SettingItem | null>(null);
+  const { toast } = useToast();
+
   const handleCreateClick = () => {
+    setDialogMode('create');
     setSelectedSetting(null);
     setDialogOpen(true);
   };
 
-  const handleEditClick = (setting: Setting) => {
+  const handleEditClick = (setting: SettingItem) => {
+    setDialogMode('edit');
     setSelectedSetting(setting);
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (setting: Setting) => {
+  const handleDeleteClick = (setting: SettingItem) => {
     setSettingToDelete(setting);
     setDeleteDialogOpen(true);
   };
 
-  const handleSubmit = async (data: {
-    id?: string;
-    configKey: string;
-    description: string;
-    configData: Record<string, any>;
-  }) => {
+  const handleSubmit = async (data: any) => {
     try {
-      if (data.id) {
-        await systemSettingService.updateSystemSetting(data.id, {
-          configKey: data.configKey,
-          description: data.description,
-          configData: data.configData,
-        });
-
+      if (dialogMode === 'create') {
+        await systemSettingService.createSystemSetting(data);
         toast({
-          title: "Setting updated",
-          description: `${data.configKey} updated successfully.`,
+          title: "Success",
+          description: "Setting created successfully",
+          variant: "default",
         });
-      } else {
-        await systemSettingService.createSystemSetting({
-          configKey: data.configKey,
-          description: data.description,
-          configData: data.configData,
-        });
-
+      } else if (dialogMode === 'edit' && selectedSetting) {
+        await systemSettingService.updateSystemSetting(selectedSetting.id, data);
         toast({
-          title: "Setting created",
-          description: `${data.configKey} created successfully.`,
+          title: "Success",
+          description: "Setting updated successfully",
+          variant: "default",
         });
       }
-
-      fetchSettings();
-      setDialogOpen(false);
-    } catch {
+      await fetchSettings();
+    } catch (error) {
       toast({
         title: "Error",
-        description: "Operation failed",
+        description: "Failed to save setting",
         variant: "destructive",
       });
     }
   };
 
-  
-
   const handleDeleteConfirm = async () => {
     if (!settingToDelete) return;
-
     try {
       await systemSettingService.deleteSystemSetting(settingToDelete.id);
-
       toast({
-        title: "Setting deleted",
-        description: `${settingToDelete.configKey} removed.`,
+        title: "Success",
+        description: "Setting deleted successfully",
+        variant: "default",
       });
-
-      fetchSettings();
-      setDeleteDialogOpen(false);
-    } catch {
+      await fetchSettings();
+    } catch (error) {
       toast({
         title: "Error",
-        description: "Delete failed",
+        description: "Failed to delete setting",
         variant: "destructive",
       });
     }
+    setDeleteDialogOpen(false);
+    setSettingToDelete(null);
   };
 
   return (
@@ -166,21 +175,8 @@ const SettingsPage = () => {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search keys or descriptions..."
-            defaultValue={search}
-            onChange={(e) => {
-              const value = e.target.value;
-
-              const params: any = {
-                page: 1,
-                limit,
-              };
-
-              if (value) params.search = value;
-              if (sortBy) params.sortBy = sortBy;
-              if (sortOrder) params.sortOrder = sortOrder;
-
-              setSearchParams(params);
-            }}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -249,8 +245,18 @@ const SettingsPage = () => {
         </Table>
       </div>
 
+      {/* Pagination */}
+      {meta && (
+        <Pagination
+          page={page}
+          totalPages={meta?.totalPages || 1}
+          onPageChange={handlePageChange}
+        />
+      )}
+
       <SettingsDialog
         open={dialogOpen}
+        mode={dialogMode}
         onOpenChange={setDialogOpen}
         setting={selectedSetting}
         onSubmit={handleSubmit}

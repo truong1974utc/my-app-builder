@@ -14,7 +14,6 @@ export class ApiClient {
   constructor() {
     this.instance = axios.create({
       baseURL: import.meta.env.VITE_API_URL,
-      headers: { "Content-Type": "application/json" },
     });
 
     this.instance.interceptors.request.use(this.handleRequest.bind(this));
@@ -30,10 +29,6 @@ export class ApiClient {
   // =============================
   private handleRequest(config: AxiosRequestConfig | any) {
     const token = localStorage.getItem("accessToken");
-
-    console.log("🔵 REQUEST:", config.url);
-    console.log("🔵 accessToken:", token);
-
     if (
       token &&
       !config.url?.includes("/auth/login") &&
@@ -50,7 +45,6 @@ export class ApiClient {
   // RESPONSE SUCCESS
   // =============================
   private handleResponse(response: any) {
-    console.log("🟢 RESPONSE OK:", response.config?.url);
     return response.data;
   }
 
@@ -94,7 +88,6 @@ export class ApiClient {
       originalRequest._retry = true;
 
       const refreshToken = localStorage.getItem("refreshToken");
-      console.log("🟡 Try refresh with token:", refreshToken);
 
       if (!refreshToken) {
         console.log("❌ No refreshToken → logout");
@@ -104,7 +97,6 @@ export class ApiClient {
 
       // Nếu đang refresh thì chờ
       if (this.isRefreshing) {
-        console.log("⏳ Waiting for refresh...");
 
         return new Promise((resolve, reject) => {
           this.failedQueue.push({ resolve, reject });
@@ -117,13 +109,11 @@ export class ApiClient {
       this.isRefreshing = true;
 
       try {
-        console.log("🟡 Calling refresh API...");
         const res = await authApi.refresh(refreshToken);
 
         // ⚠ QUAN TRỌNG: tuỳ backend trả gì
         const newAccessToken = res.data?.accessToken || res.accessToken;
 
-        console.log("🟢 New accessToken:", newAccessToken);
 
         if (!newAccessToken) {
           throw new Error("No accessToken returned");

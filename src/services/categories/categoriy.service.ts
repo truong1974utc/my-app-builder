@@ -1,14 +1,6 @@
 import axiosClient from "@/services/axiosClient";
 import { PaginationMeta } from "@/types/pagination.type";
-
-export interface Category {
-  id: string;
-  name: string;
-  description: string;
-  productCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Category } from "@/types/category.type";
 
 export interface GetCategoriesParams {
   page: number;
@@ -24,31 +16,36 @@ export interface GetCategoriesResponse {
 }
 
 export const categoriesService = {
-  getCategories(params: GetCategoriesParams) {
-    return axiosClient.get<{
+  async getCategories(params: GetCategoriesParams): Promise<GetCategoriesResponse> {
+    const response = await axiosClient.get<{
       success: boolean;
-      data: {
-        items: Category[];
-        meta: PaginationMeta;
-      };
+      data: GetCategoriesResponse;
     }>("/categories", { params });
+    if (!response.success) {
+      throw new Error("Failed to fetch categories");
+    }
+    return response.data;
   },
 
-  createCategory(payload: { name: string; description?: string }) {
-    return axiosClient.post("/categories", payload);
+  async createCategory(payload: {
+    name: string;
+    description?: string;
+  }) {
+    const response = await axiosClient.post("/categories", payload);
+    return response.data;
   },
 
-  updateCategory(
-    id: string,
-    payload: Partial<{
-      name: string;
-      description: string;
-    }>,
-  ) {
-    return axiosClient.put(`/categories/${id}`, payload);
+  async updateCategory(id: string, payload: Partial<{
+    name: string;
+    description?: string;
+  }>) {
+    const response = await axiosClient.put(`/categories/${id}`, payload);
+    return response.data;
   },
 
-  deleteCategory(id: string) {
-    return axiosClient.delete(`/categories/${id}`);
+  async deleteCategory(id: string) {
+    const response = await axiosClient.delete(`/categories/${id}`);
+    return response.data;
   },
-};
+}
+

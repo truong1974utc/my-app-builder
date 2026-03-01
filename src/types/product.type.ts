@@ -3,27 +3,14 @@ export interface Product {
   sku: string;
   name: string;
   brand: string;
-  category: {
-    id: string;
-    name: string;
-  };
+  category: Category;
   basePrice: string;
   discountPrice: string;
   stockUnits: number;
-  status: "IN STOCK" | "LOW STOCK" | "OUT OF STOCK";
+  status: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
   isFeatured: boolean;
   mainImage: string;
   createdAt: string;
-  barcode?: string;
-  manufacturer?: string;
-  weight?: string;
-  dimensions?: string;
-  description?: string;
-  minStockLevel?: number;
-  metaTitle?: string;
-  metaDescription?: string;
-  slug?: string;
-  tags?: string[];
 }
 
 export interface Category {
@@ -31,28 +18,22 @@ export interface Category {
   name: string;
 }
 
-export interface CreateProductPayload {
-  name: string;
-  sku: string;
+export interface ProductDetail extends Product {
   barcode?: string;
-  category: string;
-  brand: string;
-  manufacturer: string;
+  description?: string;
+  manufacturer?: string;
   weight?: string;
   dimensions?: string;
-  description?: string;
-
-  costPrice: number;
-  sellingPrice: number;
-  comparePrice?: number;
-  stock: number;
-  minStock?: number;
-
   metaTitle?: string;
   metaDescription?: string;
-  slug?: string;
-
-  featured: boolean;
-  tags: string[];
+  lowStockAlert?: number;
+  tags?: string[];
+  images?: {
+    id: string;
+    url: string;
+    isMain?: boolean;
+  }[];
+  categoryId: string;
+  costPrice: number;
 }
 

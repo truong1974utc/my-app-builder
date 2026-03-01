@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }: any) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const login = (data: any) => {
-    console.log("🟢 CONTEXT RECEIVED DATA:", data);
     localStorage.setItem("accessToken", data.data.accessToken);
     localStorage.setItem("refreshToken", data.data.refreshToken);
     setUser(data.data.user);
@@ -32,8 +31,6 @@ export const AuthProvider = ({ children }: any) => {
     const initAuth = async () => {
       const refreshToken = localStorage.getItem("refreshToken");
 
-      console.log("🟡 INIT REFRESH TOKEN:", refreshToken);
-
       // 🔥 QUAN TRỌNG: Không có refreshToken thì khỏi gọi me
       if (!refreshToken) {
         console.log("🔴 No refreshToken → skip init");
@@ -42,12 +39,7 @@ export const AuthProvider = ({ children }: any) => {
       }
 
       try {
-        console.log("🟡 INIT AUTH - CALLING /auth/me");
-
         const res = await authApi.me();
-
-        console.log("🟢 INIT AUTH SUCCESS:", res);
-
         setUser(res.data);
       } catch (err) {
         console.log("🔴 INIT AUTH FAILED");

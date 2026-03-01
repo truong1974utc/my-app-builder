@@ -1,5 +1,4 @@
 export type UserRole = "SUPER_ADMIN" | "ADMIN"
-
 export type UserStatus = "ACTIVE" | "INACTIVE"
 
 export interface User {

@@ -1,75 +1,64 @@
 import axiosClient from "@/services/axiosClient";
 import { PaginationMeta } from "@/types/pagination.type";
-
-export interface SystemSettingItem {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  configKey: string;
-  description: string;
-  configData: Record<string, any>;
-}
+import { SettingItem } from "@/types/setting.type";
 
 export interface GetSystemSettingsParams {
   page: number;
   limit: number;
   search?: string;
+  sortBy?: string;
+  sortOrder?: "ASC" | "DESC";
 }
 
 export interface GetSystemSettingsResponse {
-  items: SystemSettingItem[];
+  items: SettingItem[];
   meta: PaginationMeta;
 }
 
 export const systemSettingService = {
-  getSystemSettings(params: GetSystemSettingsParams) {
-    return axiosClient.get<{
+  async getSystemSettings(params: GetSystemSettingsParams): Promise<GetSystemSettingsResponse> {
+    const response = await axiosClient.get<{
       success: boolean;
       data: GetSystemSettingsResponse;
-    }>("/settings", {
-      params,
-      headers: {
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-      },
-    });
+    }>("/settings", { params });
+    if (!response.success) {
+      throw new Error("Failed to fetch system settings");
+    }
+    return response.data;
   },
 
-  getSystemSetting(id: string) {
-    return axiosClient.get<{
-      success: boolean;
-      data: SystemSettingItem;
-    }>(`/settings/${id}`);
-  },
-
-  createSystemSetting(payload: {
+  async createSystemSetting(payload: {
     configKey: string;
     description: string;
     configData: Record<string, any>;
   }) {
-    return axiosClient.post<{
+    const response = await axiosClient.post<{
       success: boolean;
-      data: SystemSettingItem;
+      data: SettingItem;
     }>("/settings", payload);
-  },
-
-  updateSystemSetting(
-    id: string,
-    payload: {
-      configKey: string;
-      description: string;
-      configData: Record<string, any>;
+    if (!response.success) {
+      throw new Error("Failed to create system setting");
     }
-  ) {
-    return axiosClient.put<{
-      success: boolean;
-      data: SystemSettingItem;
-    }>(`/settings/${id}`, payload);
+    return response.data;
   },
 
-  deleteSystemSetting(id: string) {
-    return axiosClient.delete<{
-      success: boolean;
-    }>(`/settings/${id}`);
+  async updateSystemSetting(id: string, payload: {
+    configKey: string;
+    description: string;
+    configData: Record<string, any>;
+  }) {
+    const response = await axiosClient.put<{ success: boolean; data: SettingItem }>(`/settings/${id}`, payload);
+    if (!response.success) {
+      throw new Error("Failed to update system setting");
+    }
+    return response.data;
   },
-};
+
+  async deleteSystemSetting(id: string) {
+    const response = await axiosClient.delete<{ success: boolean; data: SettingItem; message: string }>(`/settings/${id}`);
+    if (!response.success) {
+      throw new Error("Failed to delete system setting");
+    }
+    return response.data;
+  },
+}

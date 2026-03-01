@@ -13,25 +13,118 @@ import {
   Pie,
   Cell,
 } from "recharts";
-
-const growthData = [
-  { name: "Jan", users: 4000 },
-  { name: "Feb", users: 3000 },
-  { name: "Mar", users: 5000 },
-  { name: "Apr", users: 7000 },
-  { name: "May", users: 6000 },
-  { name: "Jun", users: 8000 },
-  { name: "Jul", users: 10000 },
-];
-
-const categoryData = [
-  { name: "Electronics", value: 35, color: "hsl(245, 75%, 60%)" },
-  { name: "Accessories", value: 25, color: "hsl(152, 70%, 45%)" },
-  { name: "Audio", value: 20, color: "hsl(38, 95%, 55%)" },
-  { name: "Gaming", value: 20, color: "hsl(0, 75%, 55%)" },
-];
+import { LatestProducts } from "@/components/dashboard/LatestProducts";
+import { ContentStatus } from "@/components/dashboard/ContentStatus";
+import {
+  CategorySplitItem,
+  ContentStatusItem,
+  DashboardGrowth,
+  dashboardService,
+  DashboardStats,
+  LastestProduct,
+} from "@/services/dashboard/dashboard.service";
+import { useEffect, useState, useMemo } from "react";
 
 const DashboardOverview = () => {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [growth, setGrowth] = useState<DashboardGrowth | null>(null);
+  const [categorySplit, setCategorySplit] = useState<CategorySplitItem[]>([]);
+  const [latestProducts, setLatestProducts] = useState<LastestProduct[]>([]);
+  const [contentStatusItem, setContentStatusItem] = useState<ContentStatusItem[]>([]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const data = await dashboardService.getStats();
+        setStats(data);
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const fetchGrowth = async () => {
+      try {
+        const data = await dashboardService.getGrowth();
+        setGrowth(data);
+      } catch (error) {
+        console.error("Error fetching dashboard growth data:", error);
+      }
+    };
+    fetchGrowth();
+  }, []);
+
+  useEffect(() => {
+    const fetchCategorySplit = async () => {
+      try {
+        const data = await dashboardService.getCategorySplit();
+        setCategorySplit(data);
+      } catch (error) {
+        console.error("Error fetching category split data:", error);
+      }
+    };
+    fetchCategorySplit();
+  }, []);
+
+  const growthChartData = useMemo(() => {
+    if (!growth) return [];
+
+    return growth.labels.map((label, index) => {
+      const row: any = { month: label };
+
+      growth.datasets.forEach((dataset) => {
+        row[dataset.name] = dataset.data[index];
+      });
+
+      return row;
+    });
+  }, [growth]);
+
+  const PIE_COLORS = [
+    "hsl(245,75%,60%)",
+    "hsl(152,70%,45%)",
+    "hsl(38,95%,55%)",
+    "hsl(0,75%,55%)",
+    "hsl(260,70%,60%)",
+  ];
+
+  const categoryData = useMemo(() => {
+    return categorySplit.map((item, index) => ({
+      ...item,
+      color: PIE_COLORS[index % PIE_COLORS.length],
+    }));
+  }, [categorySplit]);
+
+  useEffect(() => {
+    const fetchLatestProducts = async () => {
+      try {
+        const data = await dashboardService.getLatestProducts();
+        setLatestProducts(data);
+      } catch (error) {
+        console.error("Error fetching latest products:", error);
+      }
+    };
+    fetchLatestProducts();
+  }, []);
+
+  useEffect(() => {
+    const fetchContentStatus = async () => {
+      try { 
+        const data = await dashboardService.getContentStatus();
+        setContentStatusItem(data);
+      } catch (error) {
+        console.error("Error fetching content status:", error);
+      } 
+    };
+    fetchContentStatus();
+  }, []);
+
   return (
     <div className="animate-fade-in">
       <PageHeader
@@ -43,7 +136,7 @@ const DashboardOverview = () => {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Platform Users"
-          value={4}
+          value={stats ? stats.totalUsers : 0}
           icon={Users}
           trend={{ value: "+8.2%", isPositive: true }}
           iconBgColor="bg-accent"
@@ -51,7 +144,7 @@ const DashboardOverview = () => {
         />
         <StatCard
           title="Published Pages"
-          value={1}
+          value={stats ? stats.publishedPages : 0}
           icon={FileText}
           trend={{ value: "+4.3%", isPositive: true }}
           iconBgColor="bg-info/10"
@@ -59,7 +152,7 @@ const DashboardOverview = () => {
         />
         <StatCard
           title="Stored Documents"
-          value={2}
+          value={stats ? stats.totalDocuments : 0}
           icon={FolderOpen}
           trend={{ value: "-1.2%", isPositive: false }}
           iconBgColor="bg-muted"
@@ -68,93 +161,146 @@ const DashboardOverview = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid gap-6 lg:grid-cols-3 items-stretch">
         {/* Platform Growth Chart */}
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-card">
-          <h3 className="text-lg font-semibold text-foreground">Platform Growth</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            User engagement and activity trends over the last 7 months.
-          </p>
-          <div className="mt-6 h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={growthData}>
-                <defs>
-                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(245, 75%, 60%)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(245, 75%, 60%)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 90%)" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'hsl(220, 10%, 50%)', fontSize: 12 }}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'hsl(220, 10%, 50%)', fontSize: 12 }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(0, 0%, 100%)',
-                    border: '1px solid hsl(220, 15%, 90%)',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="users"
-                  stroke="hsl(245, 75%, 60%)"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorUsers)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+        <div className="lg:col-span-2 flex">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-card h-full flex flex-col w-full">
+            <h3 className="text-lg font-semibold text-foreground">
+              Platform Growth
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              User engagement and activity trends over the last 7 months.
+            </p>
+            <div className="mt-6 flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={growthChartData}>
+                  <defs>
+                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor="hsl(245, 75%, 60%)"
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="hsl(245, 75%, 60%)"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(220, 15%, 90%)"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(220, 10%, 50%)", fontSize: 12 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "hsl(220, 10%, 50%)", fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(0, 0%, 100%)",
+                      border: "1px solid hsl(220, 15%, 90%)",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Users"
+                    stroke="hsl(245, 75%, 60%)"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorUsers)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
         {/* Category Split Chart */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-          <h3 className="text-lg font-semibold text-foreground">Category Split</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Distribution of products across main categories.
-          </p>
-          <div className="mt-6 h-[300px] flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={100}
-                  paddingAngle={2}
-                  dataKey="value"
+        <div className="flex">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-card h-full flex flex-col w-full">
+            <h3 className="text-lg font-semibold text-foreground">
+              Category Split
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Distribution of products across main categories.
+            </p>
+            <div className="mt-6 h-[300px] flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <text
+                    x="50%"
+                    y="50%"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="fill-foreground"
+                  >
+                    <tspan x="50%" dy="-0.5em" fontSize="28" fontWeight="bold">
+                      {categoryData.length}
+                    </tspan>
+                    <tspan
+                      x="50%"
+                      dy="1.5em"
+                      fontSize="12"
+                      className="fill-success"
+                    >
+                      TOTAL ITEMS
+                    </tspan>
+                  </text>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-6 space-y-3">
+              {categoryData.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between text-sm"
                 >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <text
-                  x="50%"
-                  y="50%"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="fill-foreground"
-                >
-                  <tspan x="50%" dy="-0.5em" fontSize="28" fontWeight="bold">
-                    3
-                  </tspan>
-                  <tspan x="50%" dy="1.5em" fontSize="12" className="fill-success">
-                    TOTAL ITEMS
-                  </tspan>
-                </text>
-              </PieChart>
-            </ResponsiveContainer>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="text-muted-foreground">{item.name}</span>
+                  </div>
+
+                  <span className="font-semibold text-foreground">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
+      </div>
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-7">
+          <LatestProducts products={latestProducts} />
+        </div>
+
+        <div className="lg:col-span-5">
+          <ContentStatus pages={contentStatusItem} />
         </div>
       </div>
     </div>

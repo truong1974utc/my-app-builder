@@ -11,12 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-
-type FormValues = {
-  name: string;
-  email: string;
-  password: string;
-};
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createUserSchema, CreateUserFormValues } from "@/schemas/user.schema";
 
 interface UserDialogProps {
   open: boolean;
@@ -26,8 +22,10 @@ interface UserDialogProps {
     id: string;
     fullName: string;
     email: string;
+    role: "ADMIN" | "SUPER_ADMIN";
+    status: "ACTIVE" | "INACTIVE";
   };
-  onSubmit: (data: { name: string; email: string; password: string }) => void;
+  onSubmit: (data: CreateUserFormValues) => void;
 }
 
 export function UserDialog({
@@ -46,11 +44,14 @@ export function UserDialog({
     reset,
     setValue,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<CreateUserFormValues>({
+    resolver: zodResolver(createUserSchema),
     defaultValues: {
-      name: "",
+      fullName: "",
       email: "",
       password: "",
+      role: "ADMIN",
+      status: "ACTIVE",
     },
   });
 
@@ -59,17 +60,21 @@ export function UserDialog({
 
     if (mode === "create") {
       reset({
-        name: "",
+        fullName: "",
         email: "",
         password: "",
+        role: "ADMIN",
+        status: "ACTIVE",
       });
     }
 
     if (mode === "edit" && user) {
       reset({
-        name: user.fullName,
+        fullName: user.fullName,
         email: user.email,
         password: "",
+        role: user.role,
+        status: user.status,
       });
     }
 
@@ -87,7 +92,7 @@ export function UserDialog({
     setShowPassword(true);
   };
 
-  const submit = (data: FormValues) => {
+  const submit = (data: CreateUserFormValues) => {
     onSubmit(data);
     onOpenChange(false);
   };
@@ -116,10 +121,10 @@ export function UserDialog({
             <Input
               placeholder="Full Name"
               className="h-11"
-              {...register("name", { required: "Name is required" })}
+              {...register("fullName")}
             />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
+            {errors.fullName && (
+              <p className="text-xs text-destructive">{errors.fullName.message}</p>
             )}
           </div>
 
@@ -133,9 +138,7 @@ export function UserDialog({
               type="email"
               placeholder="email"
               className="h-11"
-              {...register("email", {
-                required: "Email is required",
-              })}
+              {...register("email")}
             />
             {errors.email && (
               <p className="text-xs text-destructive">{errors.email.message}</p>
@@ -154,9 +157,7 @@ export function UserDialog({
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter password"
                   className="h-11 pr-10"
-                  {...register("password", {
-                    required: !isEdit ? "Password is required" : false,
-                  })}
+                  {...register("password")}
                 />
                 <button
                   type="button"
@@ -185,6 +186,45 @@ export function UserDialog({
                 ? "Leave blank to keep the current password."
                 : "Generate a secure password or type your own."}
             </p>
+          </div>
+
+          {/* Role & Status (only in create mode) */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Role */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                <span className="h-3.5 w-3.5 rounded-full border border-primary/20 bg-primary/5" />
+                Role
+              </Label>
+              <select
+                className="flex h-11 w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                {...register("role")}
+              >
+                <option value="ADMIN">Admin</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+              </select>
+              {errors.role && (
+                <p className="text-xs text-destructive">{errors.role.message}</p>
+              )}
+            </div>
+
+            {/* Status */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                <span className="h-3.5 w-3.5 rounded-full border border-primary/20 bg-primary/5" />
+                Status
+              </Label>
+              <select
+                className="flex h-11 w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                {...register("status")}
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+              {errors.status && (
+                <p className="text-xs text-destructive">{errors.status.message}</p>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="pt-4">

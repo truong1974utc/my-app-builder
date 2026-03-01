@@ -7,15 +7,12 @@ export default function ProtectedRoute({
   children: JSX.Element;
 }) {
   const { user, loading } = useAuth();
-  console.log("🟣 PROTECTED USER:", user);
-  console.log("🟣 LOADING:", loading);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
   if (!user) {
-    console.log("🔴 REDIRECTING");
     return <Navigate to="/login" replace />;
   }
 

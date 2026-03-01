@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ProductDialog } from "@/components/dialogs/ProductDialog";
@@ -9,52 +9,178 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { ProductDetailView } from "@/components/products/ProductDetailView";
 import { Pagination } from "@/components/common/Pagination";
 import { useToast } from "@/hooks/use-toast";
-import { Product } from "@/types/product.type";
+import { Product, ProductDetail } from "@/types/product.type";
 
 import { useProductQuery } from "@/hooks/products/useProduct";
 import { useCategories } from "@/hooks/category/useCategory";
 import { productsService } from "@/services/products/product.service";
+import { useSearchParams } from "react-router-dom";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationLimit } from "@/enums/pagination.enum";
+import { categoriesService } from "@/services/categories/categoriy.service";
+import { Category } from "@/types/category.type";
+import { Input } from "@/components/ui/input";
+import { CreateProductFormValues } from "@/schemas/product.schema";
 
 const ProductManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [meta, setMeta] = useState<any>(null);
+  const [searchValue, setSearchValue] = useState(
+    searchParams.get("search") || "",
+  );
+  const [loading, setLoading] = useState(false);
+  const debouncedSearch = useDebounce(searchValue, 500);
+  const page = Number(searchParams.get("page")) || 1;
+  const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
+  const search = searchParams.get("search") || undefined;
+  const sortBy = searchParams.get("sortBy") || undefined;
+  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC" | undefined;
+  const status = searchParams.get("status") || undefined;
+  const promotion = searchParams.get("promotion") || undefined;
+  const minPrice = searchParams.get("minPrice") || undefined;
+  const maxPrice = searchParams.get("maxPrice") || undefined;
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    let change = false;
+    if (!params.get("page")) {
+      params.set("page", "1");
+      change = true;
+    }
+    if (!params.get("limit")) {
+      params.set("limit", String(PaginationLimit.TEN));
+      change = true;
+    }
+    if (change) {
+      setSearchParams(params);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    updateURL({ search: debouncedSearch });
+  }, [debouncedSearch]);
+
+  const handleFiltersChange = (filters: any) => {
+    const params: Record<string, any> = {};
+
+    // category
+    if (filters.categories && filters.categories !== "all") {
+      params.categories = filters.categories;
+    } else {
+      params.categories = undefined;
+    }
+
+    // status
+    if (filters.status && filters.status !== "all") {
+      params.status = filters.status;
+    } else {
+      params.status = undefined;
+    }
+
+    // promotion
+    if (filters.promotion && filters.promotion !== "all") {
+      params.promotion = filters.promotion;
+    } else {
+      params.promotion = undefined;
+    }
+
+    if (filters.minPrice) {
+      params.minPrice = filters.minPrice;
+    } else {
+      params.minPrice = undefined;
+    }
+
+    if (filters.maxPrice) {
+      params.maxPrice = filters.maxPrice;
+    } else {
+      params.maxPrice = undefined;
+    }
+
+    // SORT MAPPING
+    switch (filters.sortBy) {
+      case "all":
+        params.sortBy = undefined;
+        params.sortOrder = undefined;
+        break;
+      case "newest":
+        params.sortBy = "createdAt";
+        params.sortOrder = "DESC";
+        break;
+      case "price_asc":
+        params.sortBy = "price";
+        params.sortOrder = "ASC";
+        break;
+      case "price_desc":
+        params.sortBy = "price";
+        params.sortOrder = "DESC";
+        break;
+      case "stock_asc":
+        params.sortBy = "stock";
+        params.sortOrder = "ASC";
+        break;
+      case "stock_desc":
+        params.sortBy = "stock";
+        params.sortOrder = "DESC";
+        break;
+      case "name_asc":
+        params.sortBy = "name";
+        params.sortOrder = "ASC";
+        break;
+      case "name_desc":
+        params.sortBy = "name";
+        params.sortOrder = "DESC";
+        break;
+    }
+
+    updateURL(params);
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await productsService.getProducts(searchParams as any);
+      setProducts(res.items);
+      setMeta(res.meta);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+    } finally {
+      // setLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (!page || !limit) return;
+    fetchProducts();
+  }, [searchParams.toString()]);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await categoriesService.getCategories({ page: 1, limit: 1000 });
+      setCategories(res.items);
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
+  };
+
   const { toast } = useToast();
-
-  /** ---------------- DATA HOOKS ---------------- */
-  const { products, meta, loading, queryConfig, updateURL } =
-    useProductQuery();
-
-  const { categories } = useCategories();
 
   /** ---------------- DIALOG STATE ---------------- */
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] =
-    useState<Product | null>(null);
-  const [productToEdit, setProductToEdit] =
-    useState<Product | null>(null);
-  const [viewingProduct, setViewingProduct] =
-    useState<Product | null>(null);
-  const [dialogMode, setDialogMode] =
-    useState<"create" | "edit">("create");
-
-  /** ---------------- URL HANDLERS ---------------- */
-  const handleSearchChange = (value: string) =>
-    updateURL({ search: value });
-
-  const handleCategoryChange = (catId: string) =>
-    updateURL({ categories: catId });
-
-  const handleFiltersChange = (filters: any) =>
-    updateURL({
-      categories: filters.category,
-      status: filters.status,
-      promotion: filters.promotion,
-      minPrice: filters.minPrice,
-      maxPrice: filters.maxPrice,
-      sortBy: filters.sortBy,
-    });
-
-  const handlePageChange = (page: number) =>
-    updateURL({ page });
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [productToEdit, setProductToEdit] = useState<ProductDetail | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<ProductDetail | null>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
 
   /** ---------------- CRUD HANDLERS ---------------- */
   const handleAddProduct = () => {
@@ -63,13 +189,18 @@ const ProductManagement = () => {
     setDialogOpen(true);
   };
 
-  const handleEditProduct = (product: Product) => {
-    setDialogMode("edit");
-    setProductToEdit(product);
-    setDialogOpen(true);
+  const handleEditProduct = async (product: ProductDetail) => {
+    try {
+      const detail = await productsService.getProductById(product.id);
+      setDialogMode("edit");
+      setProductToEdit(detail);
+      setDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch product detail", error);
+    }
   };
 
-  const handleViewProduct = (product: Product) => {
+  const handleViewProduct = (product: ProductDetail) => {
     setViewingProduct(product);
   };
 
@@ -79,106 +210,82 @@ const ProductManagement = () => {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!productToDelete) return;
-
     try {
-      const res = await productsService.deleteProduct(
-        productToDelete.id
-      );
-
-      if (res.success) {
-        toast({
-          title: "Product deleted",
-          description: `${productToDelete.name} removed successfully.`,
-        });
-
-        // Refetch bằng cách reload URL page hiện tại
-        updateURL({ page: queryConfig.page });
-      }
-    } catch (error) {
+      await productsService.deleteProduct(productToDelete?.id || "");
       toast({
-        title: "Error",
-        description: "Could not delete product.",
-        variant: "destructive",
+        title: "Product deleted",
+        description: `${productToDelete?.name} deleted successfully.`,
       });
-    } finally {
+      await fetchProducts();
       setDeleteDialogOpen(false);
       setProductToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete product", error);
     }
+  };
+
+  const updateURL = (updates: Record<string, any>) => {
+    const params = new URLSearchParams(searchParams);
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (
+        value === undefined ||
+        value === null ||
+        value === ""
+      ) {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+
+    // reset page khi filter thay đổi
+    if (!("page" in updates)) {
+      params.set("page", "1");
+    }
+
+    if (!("limit" in updates)) {
+      params.set("limit", String(PaginationLimit.TEN));
+    }
+
+    setSearchParams(params);
   };
 
   const handleProductSubmit = async (data: any) => {
     try {
-      const payload: any = {
-        name: data.name,
-        sku: data.sku,
-        barcode: data.barcode,
-        categoryId: data.category,
-        brand: data.brand,
-        manufacturer: data.manufacturer,
-        weight: data.weight,
-        dimensions: data.dimensions,
-        description: data.description,
-        basePrice: Number(data.sellingPrice),
-        discountPrice: Number(data.comparePrice),
-        stockUnits: Number(data.stock),
-        minStockLevel: Number(data.minStock),
-        isFeatured: data.featured,
-        metaTitle: data.metaTitle,
-        metaDescription: data.metaDescription,
-        slug: data.slug,
-        tags: data.tags,
-      };
-
-      Object.keys(payload).forEach((key) => {
-        if (
-          payload[key] === undefined ||
-          payload[key] === null ||
-          payload[key] === ""
-        ) {
-          delete payload[key];
-        }
-      });
-
       if (dialogMode === "create") {
-        const res = await productsService.createProduct(payload);
-        if (res.success) {
-          toast({
-            title: "Product created",
-            description: `${res.data.name} created successfully.`,
-          });
-        }
-      } else if (dialogMode === "edit" && productToEdit) {
-        const res = await productsService.updateProduct(
-          productToEdit.id,
-          payload
-        );
-
-        if (res.success) {
-          toast({
-            title: "Product updated",
-            description: `${res.data.name} updated successfully.`,
-          });
-        }
+        console.log("🚀 SUBMIT DATA:", data);
+        await productsService.createProduct(data);
+        toast({
+          title: "Product created",
+          description: `${data.name} created successfully.`,
+        });
       }
 
+      if (dialogMode === "edit" && productToEdit) {
+        console.log("🚀 SUBMIT DATA:", data);
+        await productsService.updateProduct(productToEdit.id, data);
+        toast({
+          title: "Product updated",
+          description: `${data.name} updated successfully.`,
+        });
+      }
+
+      await fetchProducts();
       setDialogOpen(false);
-
-      // Refetch lại
-      updateURL({ page: queryConfig.page });
-
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description:
-          error?.response?.data?.message ||
-          "Could not save product.",
-        variant: "destructive",
-      });
+      setProductToEdit(null);
+    } catch (error) {
+      if (error instanceof Error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+      console.log("ERROR", error);
     }
-  };
+  }
 
-  /** ---------------- DETAIL VIEW ---------------- */
   if (viewingProduct) {
     return (
       <div className="animate-fade-in">
@@ -222,27 +329,28 @@ const ProductManagement = () => {
         description="System management and detailed overview."
       />
 
-      <ProductFilters
-        searchTerm={queryConfig.search}
-        onSearchChange={handleSearchChange}
-        categories={categories}
-        filters={{
-          category: queryConfig.categories,
-          status: queryConfig.status,
-          promotion: queryConfig.promotion,
-          minPrice: queryConfig.minPrice,
-          maxPrice: queryConfig.maxPrice,
-          sortBy: queryConfig.sortKey,
-        }}
-        onFiltersChange={handleFiltersChange}
-      />
+      {/* Search and Add */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search users..."
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="pl-10"
+          />
+        </div>
 
-      <div className="flex justify-end mb-6">
         <Button className="gap-2" onClick={handleAddProduct}>
           <Plus className="h-4 w-4" />
           Add Product
         </Button>
       </div>
+
+      <ProductFilters
+        categories={categories}
+        onFiltersChange={handleFiltersChange}
+      />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {products.map((product) => (
@@ -265,7 +373,7 @@ const ProductManagement = () => {
       )}
 
       <Pagination
-        page={queryConfig.page}
+        page={page}
         totalPages={meta?.totalPages || 1}
         onPageChange={handlePageChange}
       />

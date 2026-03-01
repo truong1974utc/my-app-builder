@@ -19,10 +19,10 @@ import { useToast } from "@/hooks/use-toast";
 import { categoriesService } from "@/services/categories/categoriy.service";
 
 import { Pagination } from "@/components/common/Pagination";
-import { usePagination } from "@/hooks/usePagination";
 import { useSearch } from "@/hooks/useSearchQuery";
-import { useSort } from "@/hooks/useSortQuery";
 import { PaginationLimit } from "@/enums/pagination.enum";
+import { useDebounce } from "@/hooks/useDebounce";
+import { s } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
 
 interface Category {
   id: string;
@@ -33,26 +33,67 @@ interface Category {
 
 const CategoryManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const pageFromUrl = Number(searchParams.get("page")) || 1;
-  const limitFromUrl = Number(searchParams.get("limit")) || PaginationLimit.TEN;
-  const searchFromUrl = searchParams.get("search") || "";
-  const sortByFromUrl = searchParams.get("sortBy") || undefined;
-  const sortOrderFromUrl = searchParams.get("sortOrder") as any;
-
-  const { page, limit, setPage, setLimit } = usePagination(
-    pageFromUrl,
-    limitFromUrl,
-  );
-
-  const { search, setSearch, debouncedSearch } = useSearch(searchFromUrl);
-
-  const { sortBy, sortOrder, toggleSort } = useSort(
-    sortByFromUrl,
-    sortOrderFromUrl,
-  );
   const [categories, setCategories] = useState<Category[]>([]);
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const debouncedSearch = useDebounce(searchValue, 500);
+  const page = Number(searchParams.get("page")) || 1;
+  const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
+  const search = searchParams.get("search") || undefined;
+  const sortBy = searchParams.get("sortBy") || undefined;
+  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC" | undefined;
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (debouncedSearch?.trim())
+      params.set("search", debouncedSearch.trim());
+    else {
+      params.delete("search");
+    }
+    params.set("page", "1"); // Reset to first page on search
+    setSearchParams(params);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    let change = false;
+    if (!params.get("page")) {
+      params.set("page", "1");
+      change = true;
+    }
+    if (!params.get("limit")) {
+      params.set("limit", String(PaginationLimit.TEN));
+      change = true;
+    }
+    if (change) {
+      setSearchParams(params);
+    }
+  }, [searchParams]);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await categoriesService.getCategories(searchParams as any);
+      setCategories(data.items);
+      setMeta(data.meta);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories();
+  }, [searchParams]);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
+  };
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -64,27 +105,6 @@ const CategoryManagement = () => {
     null,
   );
   const { toast } = useToast();
-
-  /* ================== FETCH ================== */
-  const fetchCategories = async () => {
-    setLoading(true);
-    try {
-      const res = await categoriesService.getCategories({
-        page,
-        limit,
-        ...(debouncedSearch && { search: debouncedSearch }),
-        ...(sortBy && { sortBy }),
-        ...(sortOrder && { sortOrder }),
-      });
-
-      if (!res.success) return;
-
-      setCategories(res.data.items);
-      setMeta(res.data.meta);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     const params: Record<string, string> = {
@@ -99,10 +119,6 @@ const CategoryManagement = () => {
     setSearchParams(params);
   }, [page, limit, debouncedSearch, sortBy, sortOrder]);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [page, limit, debouncedSearch, sortBy, sortOrder]);
-
   const handleAddCategory = () => {
     setDialogMode("create");
     setSelectedCategory(null);
@@ -115,19 +131,11 @@ const CategoryManagement = () => {
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (category: Category) => {
-    setCategoryToDelete(category);
-    setDeleteDialogOpen(true);
-  };
-
-  /* ================== CRUD ================== */
-  const handleCategorySubmit = async (data: {
-    name: string;
-    description: string;
-  }) => {
+  const handleCategorySubmit = async (data: any) => {
+    console.log("CALL API WITH:", data);
     try {
       if (dialogMode === "create") {
-        await categoriesService.createCategory(data);
+        const res = await categoriesService.createCategory(data);
         toast({ title: "Category created" });
       }
 
@@ -135,11 +143,8 @@ const CategoryManagement = () => {
         await categoriesService.updateCategory(selectedCategory.id, data);
         toast({ title: "Category updated" });
       }
-
       await fetchCategories();
 
-      setDialogOpen(false);
-      setSelectedCategory(null);
     } catch {
       toast({
         title: "Error",
@@ -149,17 +154,25 @@ const CategoryManagement = () => {
     }
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleConfirmDelete = async () => {
     if (!categoryToDelete) return;
-
-    await categoriesService.deleteCategory(categoryToDelete.id);
-    toast({ title: "Category deleted" });
-
-    await fetchCategories();
-
-    setDeleteDialogOpen(false);
-    setCategoryToDelete(null);
-  };
+    try {
+      setDeletingId(categoryToDelete.id);
+      await categoriesService.deleteCategory(categoryToDelete.id);
+      toast({ title: "Category deleted" });
+      await fetchCategories();
+    } catch {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+      setDeleteDialogOpen(false);
+      setCategoryToDelete(null);
+    }
+  }
 
   return (
     <div className="animate-fade-in">
@@ -174,8 +187,8 @@ const CategoryManagement = () => {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search categories..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -236,7 +249,11 @@ const CategoryManagement = () => {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleDeleteClick(category)}
+                      disabled={deletingId === category.id}
+                      onClick={() => {
+                        setCategoryToDelete(category);
+                        setDeleteDialogOpen(true);
+                      }}
                     >
                       <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </Button>
@@ -252,8 +269,8 @@ const CategoryManagement = () => {
       {meta && (
         <Pagination
           page={page}
-          totalPages={meta.totalPages}
-          onPageChange={setPage}
+          totalPages={meta?.totalPages || 1}
+          onPageChange={handlePageChange}
         />
       )}
 
@@ -262,7 +279,7 @@ const CategoryManagement = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={dialogMode}
-        category={selectedCategory || undefined}
+        category={selectedCategory}
         onSubmit={handleCategorySubmit}
       />
 
@@ -272,7 +289,7 @@ const CategoryManagement = () => {
         onOpenChange={setDeleteDialogOpen}
         title="Delete Category"
         itemName={categoryToDelete?.name || ""}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
