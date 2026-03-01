@@ -1,9 +1,10 @@
 import { Eye, Pencil, Trash2, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Product } from "@/types/product.type";
+import { Product, ProductDetail } from "@/types/product.type";
 import { API_BASE_URL } from "@/constants/api";
 import { useEffect } from "react";
+import { productsService } from "@/services/products/product.service";
 
 interface ProductCardProps {
   product: Product;

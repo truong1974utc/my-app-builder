@@ -132,9 +132,12 @@ const ContentPages = () => {
   };
 
   const handleSubmit = async (data: any) => {
-    console.log("🚀 HANDLE SUBMIT DATA:", data);
-    console.log("🚀 typeof featuredImage:", typeof data.featuredImage);
-    console.log("🚀 is File:", data.featuredImage instanceof File);
+    console.log("===== SUBMIT START =====");
+    console.log("ID:", selectedPage?.id);
+    console.log("TITLE:", data.title);
+    console.log("FEATURED IMAGE:", data.featuredImage);
+    console.log("IS FILE:", data.featuredImage instanceof File);
+    console.log("TYPE:", typeof data.featuredImage);
     try {
       if (mode === "create") {
         await pagesService.createPage(data)

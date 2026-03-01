@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DocumentItem } from "@/types/document.type";
 import { documentService } from "@/services/documents/document.service";
-
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API_BASE_URL } from "@/constants/api";
 
 interface DocumentPreviewDialogProps {
   open: boolean;
@@ -23,7 +22,7 @@ export function DocumentPreviewDialog({
 }: DocumentPreviewDialogProps) {
   if (!document) return null;
 
-  const previewSrc = `${BASE_URL}${document.previewUrl}`;
+  const previewSrc = `${API_BASE_URL}${document.fileUrl}`;
   const handleDownload = async (doc: DocumentItem) => {
     try {
       const file = await documentService.downloadDocument(doc.id);

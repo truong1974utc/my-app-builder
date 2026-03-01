@@ -1,26 +1,23 @@
-import { useEffect, useState } from "react";
-import { Plus, Search } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/button";
-import { ProductDialog } from "@/components/dialogs/ProductDialog";
+import { Pagination } from "@/components/common/Pagination";
 import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
-import { ProductFilters } from "@/components/products/ProductFilters";
+import { ProductDialog } from "@/components/dialogs/ProductDialog";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductDetailView } from "@/components/products/ProductDetailView";
-import { Pagination } from "@/components/common/Pagination";
+import { ProductFilters } from "@/components/products/ProductFilters";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Product, ProductDetail } from "@/types/product.type";
+import { Plus, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 
-import { useProductQuery } from "@/hooks/products/useProduct";
-import { useCategories } from "@/hooks/category/useCategory";
-import { productsService } from "@/services/products/product.service";
-import { useSearchParams } from "react-router-dom";
-import { useDebounce } from "@/hooks/useDebounce";
-import { PaginationLimit } from "@/enums/pagination.enum";
-import { categoriesService } from "@/services/categories/categoriy.service";
-import { Category } from "@/types/category.type";
 import { Input } from "@/components/ui/input";
-import { CreateProductFormValues } from "@/schemas/product.schema";
+import { PaginationLimit } from "@/enums/pagination.enum";
+import { useDebounce } from "@/hooks/useDebounce";
+import { categoriesService } from "@/services/categories/categoriy.service";
+import { productsService } from "@/services/products/product.service";
+import { Category } from "@/types/category.type";
+import { useSearchParams } from "react-router-dom";
 
 const ProductManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -200,8 +197,13 @@ const ProductManagement = () => {
     }
   };
 
-  const handleViewProduct = (product: ProductDetail) => {
-    setViewingProduct(product);
+  const handleViewProduct = async (product: ProductDetail) => {
+    try {
+      const detail = await productsService.getProductById(product.id)
+      setViewingProduct(detail)
+    } catch (err) {
+      console.error(err)
+    }
   };
 
   const handleDeleteClick = (product: Product) => {
@@ -251,24 +253,50 @@ const ProductManagement = () => {
     setSearchParams(params);
   };
 
-  const handleProductSubmit = async (data: any) => {
+  const handleProductSubmit = async (dataProduct: any) => {
     try {
       if (dialogMode === "create") {
-        console.log("🚀 SUBMIT DATA:", data);
-        await productsService.createProduct(data);
+        console.log("🚀 SUBMIT DATA:", dataProduct);
+        await productsService.createProduct(dataProduct);
         toast({
           title: "Product created",
-          description: `${data.name} created successfully.`,
+          description: `${dataProduct.name} created successfully.`,
         });
       }
 
       if (dialogMode === "edit" && productToEdit) {
+
+        const { images, ...data } = dataProduct;
+
+        const newFiles = images.filter(
+          (img: any) => img instanceof File
+        ) as File[];
+
+        // 🔥 KIỂM TRA có thay đổi info không
+        const hasInfoChange = Object.keys(data).some((key) => {
+          return data[key] !== (productToEdit as any)[key];
+        });
+
+
         console.log("🚀 SUBMIT DATA:", data);
-        await productsService.updateProduct(productToEdit.id, data);
+
+        if (hasInfoChange) {
+          console.log("🔥 UPDATE BODY:", data);
+          await productsService.updateProduct(productToEdit.id, data);
+        }
+
+        if (newFiles.length > 0) {
+          await productsService.uploadProductImages(
+            productToEdit.id,
+            newFiles
+          );
+        }
+
         toast({
           title: "Product updated",
-          description: `${data.name} updated successfully.`,
+          description: `${dataProduct.name} updated successfully.`,
         });
+
       }
 
       await fetchProducts();

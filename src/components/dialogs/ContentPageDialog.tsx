@@ -25,6 +25,7 @@ import { ContentPage } from "@/types/page.type";
 import { CreatePageFormValues, createPageSchema } from "@/schemas/page.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { API_BASE_URL } from "@/constants/api";
 
 interface ContentPageDialogProps {
   open: boolean;
@@ -272,6 +273,8 @@ export function ContentPageDialog({
                       featuredImage instanceof File
                         ? URL.createObjectURL(featuredImage)
                         : featuredImage
+                          ? `${API_BASE_URL}${featuredImage}`
+                          : featuredImage
                     }
                     className="w-full h-40 object-cover rounded-xl"
                   />

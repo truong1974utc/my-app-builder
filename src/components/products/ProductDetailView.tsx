@@ -14,10 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Product } from "@/types/product.type";
+import { ProductDetail } from "@/types/product.type";
+import { API_BASE_URL } from "@/constants/api";
 
 interface ProductDetailViewProps {
-  product: Product;
+  product: ProductDetail;
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -51,13 +52,13 @@ export function ProductDetailView({
   const numericPrice = Number(product.basePrice) || 0;
   const costPrice = Number((product as any).costPrice) || numericPrice * 0.8;
   const margin = costPrice > 0 ? ((numericPrice - costPrice) / costPrice) * 100 : 0;
-  const inventoryLevel = product.minStockLevel
-    ? Math.min((product.stockUnits / product.minStockLevel) * 100, 100)
+  const inventoryLevel = product.lowStockAlert
+    ? Math.min((product.stockUnits / product.lowStockAlert) * 100, 100)
     : product.stockUnits > 10
-    ? 100
-    : (product.stockUnits / 10) * 100;
+      ? 100
+      : (product.stockUnits / 10) * 100;
   const inventoryHealth = product.stockUnits === 0 ? "OUT" : product.stockUnits < 10 ? "LOW" : "HEALTHY";
-
+  const subImages = product.images?.filter(img => !img.isMain) || [];
   return (
     <div className="animate-fade-in space-y-6">
       {/* Header */}
@@ -89,24 +90,27 @@ export function ProductDetailView({
           {/* Main Image */}
           <div className="aspect-[4/3] rounded-xl overflow-hidden border border-border bg-muted">
             <img
-              src={images[selectedImage]}
+              src={
+                product.images?.find(img => img.isMain)?.url
+                  ? `${API_BASE_URL}${product.images.find(img => img.isMain)?.url}`
+                  : "/no-image.png"
+              }
               alt={product.name}
               className="h-full w-full object-cover"
             />
           </div>
           {/* Thumbnails */}
           <div className="flex gap-3">
-            {images.map((img, idx) => (
+            {subImages.map((img, idx) => (
               <button
                 key={idx}
                 onClick={() => setSelectedImage(idx)}
-                className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                  selectedImage === idx
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-border hover:border-muted-foreground"
-                }`}
+                className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === idx
+                  ? "border-primary ring-2 ring-primary/20"
+                  : "border-border hover:border-muted-foreground"
+                  }`}
               >
-                <img src={img} alt="" className="h-full w-full object-cover" />
+                <img src={`${API_BASE_URL}${img.url}`} alt="" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>
@@ -180,30 +184,28 @@ export function ProductDetailView({
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">INVENTORY LEVEL</span>
                   <span
-                    className={`font-semibold ${
-                      inventoryHealth === "HEALTHY"
-                        ? "text-success"
-                        : inventoryHealth === "LOW"
+                    className={`font-semibold ${inventoryHealth === "HEALTHY"
+                      ? "text-success"
+                      : inventoryHealth === "LOW"
                         ? "text-warning"
                         : "text-destructive"
-                    }`}
+                      }`}
                   >
                     {inventoryHealth}
                   </span>
                 </div>
                 <Progress
                   value={inventoryLevel}
-                  className={`h-2 ${
-                    inventoryHealth === "HEALTHY"
-                      ? "[&>div]:bg-primary"
-                      : inventoryHealth === "LOW"
+                  className={`h-2 ${inventoryHealth === "HEALTHY"
+                    ? "[&>div]:bg-primary"
+                    : inventoryHealth === "LOW"
                       ? "[&>div]:bg-warning"
                       : "[&>div]:bg-destructive"
-                  }`}
+                    }`}
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>ALERT THRESHOLD</span>
-                  <span>{product.minStockLevel || 10} units</span>
+                  <span>{product.lowStockAlert || 10} units</span>
                 </div>
               </div>
             </div>

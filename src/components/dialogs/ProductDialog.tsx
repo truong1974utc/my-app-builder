@@ -34,6 +34,8 @@ import { Product, Category, ProductDetail } from "@/types/product.type";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CreateProductFormValues, createProductSchema } from "@/schemas/product.schema";
+import { API_BASE_URL } from "@/constants/api";
+import { productsService } from "@/services/products/product.service";
 
 interface ProductDialogProps {
   open: boolean;
@@ -61,6 +63,23 @@ export function ProductDialog({
 }: ProductDialogProps) {
   const [activeTab, setActiveTab] = useState("general");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    const currentImages = watch("images") || [];
+    const imageToRemove = currentImages[indexToRemove];
+
+    // Nếu là ảnh cũ từ API → lưu id để xoá backend
+    if (!(imageToRemove instanceof File) && imageToRemove?.id) {
+      setImagesToDelete((prev) => [...prev, imageToRemove.id]);
+    }
+
+    const updated = currentImages.filter(
+      (_, index) => index !== indexToRemove
+    );
+
+    setValue("images", updated, { shouldValidate: true });
+  };
 
   const {
     register,
@@ -164,10 +183,28 @@ export function ProductDialog({
     }
   }, [open, mode, product])
 
-  const submit = (data: CreateProductFormValues) => {
+  const submit = async (data: CreateProductFormValues) => {
     console.log("🚀 FINAL SUBMIT DATA:", data);
     console.log("images instanceof Array:", Array.isArray(data.images));
     console.log("first image instanceof File:", data.images?.[0] instanceof File);
+
+    if (mode === "edit" && product) {
+      try {
+        // 🚀 1. Xoá ảnh cũ trước
+        await Promise.all(
+          imagesToDelete.map((imageId) =>
+            productsService.deleteProductImage(product.id, imageId)
+          )
+        );
+
+        console.log("🗑 Deleted images:", imagesToDelete);
+        setImagesToDelete([]);
+      } catch (err) {
+        console.error("Delete image error:", err);
+      }
+    }
+
+
 
     onSubmit(data);
     onOpenChange(false);
@@ -579,21 +616,38 @@ export function ProductDialog({
                 >
                   {images.length > 0 && (
                     <div className="grid grid-cols-4 gap-4 mt-6">
-                      {images?.map((img, index) => {
+                      {images.map((img, index) => {
                         let previewUrl = "";
 
                         if (img instanceof File) {
                           previewUrl = URL.createObjectURL(img);
                         } else if (img?.url) {
-                          previewUrl = img.url;
+                          previewUrl = `${API_BASE_URL}${img.url}`;
                         }
 
                         return (
-                          <img
+                          <div
                             key={index}
-                            src={previewUrl}
-                            alt="preview"
-                          />
+                            className="relative group rounded-lg overflow-hidden border"
+                          >
+                            <img
+                              src={previewUrl}
+                              alt="preview"
+                              className="w-full h-24 object-cover"
+                            />
+
+                            {/* Nút X */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation(); // 🚀 quan trọng để không trigger upload
+                                handleRemoveImage(index);
+                              }}
+                              className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         );
                       })}
                     </div>

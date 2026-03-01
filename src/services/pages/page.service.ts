@@ -69,14 +69,17 @@ export const pagesService = {
     content?: string;
     slug?: string;
     status?: "PUBLISHED" | "DRAFT";
-    featuredImage?: File
+    featuredImage?: File | string | null;
   }) {
     const formData = new FormData()
     if (payload.title) formData.append("title", payload.title)
     if (payload.content) formData.append("content", payload.content)
     if (payload.slug) formData.append("slug", payload.slug)
     if (payload.status) formData.append("status", payload.status)
-    if (payload.featuredImage) formData.append("featuredImage", payload.featuredImage)
+    // ✅ CHỈ append nếu là File
+    if (payload.featuredImage instanceof File) {
+      formData.append("featuredImage", payload.featuredImage);
+    }
     const response = await axiosClient.put<{ success: boolean; data: ContentPage }>(`/pages/${id}`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",

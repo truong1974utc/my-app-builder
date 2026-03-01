@@ -157,5 +157,43 @@ export const productsService = {
     const response = await axiosClient.get(`/products/${id}`);
     return response.data;
   },
+
+  async deleteProductImage(productId: string, imageId: string) {
+    try {
+      const response = await axiosClient.delete(
+        `/products/${productId}/images/${imageId}`
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error("🔴 DELETE IMAGE ERROR:", error.response?.data || error);
+      throw error;
+    }
+  },
+
+  async uploadProductImages(productId: string, files: File[]) {
+    const formData = new FormData();
+
+    files.forEach(file => {
+      formData.append("images", file);
+    });
+
+    try {
+      const response = await axiosClient.post(
+        `/products/${productId}/images`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error("🔴 UPLOAD IMAGE ERROR:", error.response?.data || error);
+      throw error;
+    }
+  },
 }
 

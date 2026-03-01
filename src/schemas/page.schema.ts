@@ -39,9 +39,12 @@ export const createPageSchema = z.object({
     status: pageStatusEnum,
 
     featuredImage: z
-        .instanceof(File)
+        .union([
+            z.instanceof(File),
+            z.string(),
+            z.null()
+        ])
         .optional()
-        .nullable()
 });
 
 export type CreatePageFormValues = z.infer<typeof createPageSchema>;
@@ -67,9 +70,12 @@ export const updatePageSchema = z.object({
     status: pageStatusEnum,
 
     featuredImage: z
-        .instanceof(File)
+        .union([
+            z.instanceof(File),
+            z.string(),
+            z.null()
+        ])
         .optional()
-        .nullable()
 });
 
 export type UpdatePageFormValues = z.infer<typeof updatePageSchema>;
