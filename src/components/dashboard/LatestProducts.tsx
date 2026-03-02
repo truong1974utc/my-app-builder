@@ -8,7 +8,8 @@ import {
 import { RoutePaths } from "@/config/route";
 
 import { LastestProduct } from "@/services/dashboard/dashboard.service";
-import { Link} from "react-router-dom";
+import { Link } from "react-router-dom";
+import { API_BASE_URL } from "@/constants/api";
 
 interface Props {
   products: LastestProduct[];
@@ -32,7 +33,11 @@ export const LatestProducts = ({ products }: Props) => {
             <div className="flex items-center gap-3">
               {product.mainImage ? (
                 <img
-                  src={product.mainImage}
+                  src={
+                    product.mainImage
+                      ? `${API_BASE_URL}${product.mainImage}`
+                      : "/no-image.png"
+                  }
                   alt={product.name}
                   className="w-12 h-12 rounded-md object-cover"
                 />
