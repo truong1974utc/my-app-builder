@@ -1,12 +1,12 @@
-export type UserRole = "SUPER_ADMIN" | "ADMIN"
-export type UserStatus = "ACTIVE" | "INACTIVE"
+import { ERole } from "@/enums/role.enum"
+import { EStatusUser } from "@/enums/status.enum"
 
-export interface User {
+export interface TUser {
   id: string
   fullName: string
   email: string
-  role: UserRole
-  status: UserStatus
+  role: ERole
+  status: EStatusUser
   avatarUrl?: string | null
   createdAt: string
 }

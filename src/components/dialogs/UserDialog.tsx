@@ -13,18 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createUserSchema, CreateUserFormValues } from "@/schemas/user.schema";
+import { TUser } from "@/types/user.type";
+import { ERole } from "@/enums/role.enum";
+import { EStatusUser } from "@/enums/status.enum";
 
 interface UserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
-  user?: {
-    id: string;
-    fullName: string;
-    email: string;
-    role: "ADMIN" | "SUPER_ADMIN";
-    status: "ACTIVE" | "INACTIVE";
-  };
+  user?: TUser;
   onSubmit: (data: CreateUserFormValues) => void;
 }
 
@@ -50,8 +47,8 @@ export function UserDialog({
       fullName: "",
       email: "",
       password: "",
-      role: "ADMIN",
-      status: "ACTIVE",
+      role: ERole.ADMIN,
+      status: EStatusUser.ACTIVE,
     },
   });
 
@@ -63,8 +60,8 @@ export function UserDialog({
         fullName: "",
         email: "",
         password: "",
-        role: "ADMIN",
-        status: "ACTIVE",
+        role: ERole.ADMIN,
+        status: EStatusUser.ACTIVE,
       });
     }
 

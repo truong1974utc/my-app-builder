@@ -64,16 +64,12 @@ export class ApiClient {
   // =============================
   private async handleError(error: any) {
     const originalRequest = error.config;
-
-    console.log("🔴 RESPONSE ERROR:", originalRequest?.url);
-
     if (!error.response) {
       return Promise.reject(error);
     }
 
     // 🚫 Không refresh nếu đang là refresh
     if (originalRequest?.url?.includes("/auth/refresh")) {
-      console.log("❌ Refresh itself failed");
       localStorage.clear();
       window.location.href = "/login";
       return Promise.reject(error);
@@ -90,7 +86,6 @@ export class ApiClient {
       const refreshToken = localStorage.getItem("refreshToken");
 
       if (!refreshToken) {
-        console.log("❌ No refreshToken → logout");
         localStorage.clear();
         return Promise.reject(error);
       }
@@ -128,7 +123,6 @@ export class ApiClient {
 
         return this.instance(originalRequest);
       } catch (err) {
-        console.log("❌ Refresh failed → logout");
         this.processQueue(err, null);
         localStorage.clear();
         window.location.href = "/login";

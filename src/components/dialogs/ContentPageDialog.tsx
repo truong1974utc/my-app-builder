@@ -1,31 +1,24 @@
-import { useState, useEffect, useRef } from "react";
-import {
-  LayoutGrid,
-  X,
-  Globe,
-  Image as ImageIcon,
-  Upload,
-  Bold,
-  Italic,
-  Strikethrough,
-  List,
-  ListOrdered,
-  Link,
-  Undo,
-  Redo,
-  CheckCircle,
-  FileText,
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { ContentPage } from "@/types/page.type";
-import { CreatePageFormValues, createPageSchema } from "@/schemas/page.schema";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { API_BASE_URL } from "@/constants/api";
+import { CreatePageFormValues, createPageSchema } from "@/schemas/page.schema";
+import { ContentPage } from "@/types/page.type";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Bold,
+  Globe,
+  Italic,
+  LayoutGrid,
+  Redo,
+  Undo,
+  Upload,
+  X
+} from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { EStatusPage } from "@/enums/status.enum";
 
 interface ContentPageDialogProps {
   open: boolean;
@@ -59,7 +52,7 @@ export function ContentPageDialog({
       title: "",
       slug: "",
       content: "",
-      status: "DRAFT",
+      status: EStatusPage.DRAFT,
       featuredImage: null,
     },
   });
@@ -75,7 +68,7 @@ export function ContentPageDialog({
         title: "",
         slug: "",
         content: "",
-        status: "DRAFT",
+        status: EStatusPage.DRAFT,
         featuredImage: null,
       });
     }
@@ -92,8 +85,6 @@ export function ContentPageDialog({
   }, [open, mode, page, reset]);
 
   const submit = (data: CreatePageFormValues) => {
-    console.log("🔥 FORM SUBMIT TRIGGERED");
-    console.log("📦 DATA:", data);
     onSubmit(data);
     reset();
     onOpenChange(false);
@@ -107,9 +98,6 @@ export function ContentPageDialog({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    console.log("📁 FILE:", file);
-    console.log("📁 instanceof File:", file instanceof File);
 
     setValue("featuredImage", file);
   };

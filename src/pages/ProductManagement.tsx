@@ -14,8 +14,8 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PaginationLimit } from "@/enums/pagination.enum";
 import { useDebounce } from "@/hooks/useDebounce";
-import { categoriesService } from "@/services/categories/categoriy.service";
-import { productsService } from "@/services/products/product.service";
+import { categoriesService } from "@/services/categoriy.service";
+import { productsService } from "@/services/product.service";
 import { Category } from "@/types/category.type";
 import { useSearchParams } from "react-router-dom";
 
@@ -30,13 +30,6 @@ const ProductManagement = () => {
   const debouncedSearch = useDebounce(searchValue, 500);
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
-  const search = searchParams.get("search") || undefined;
-  const sortBy = searchParams.get("sortBy") || undefined;
-  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC" | undefined;
-  const status = searchParams.get("status") || undefined;
-  const promotion = searchParams.get("promotion") || undefined;
-  const minPrice = searchParams.get("minPrice") || undefined;
-  const maxPrice = searchParams.get("maxPrice") || undefined;
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -140,7 +133,11 @@ const ProductManagement = () => {
       setProducts(res.items);
       setMeta(res.meta);
     } catch (error) {
-      console.error("Failed to fetch products:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch products",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false);
     }
@@ -155,7 +152,11 @@ const ProductManagement = () => {
       const res = await categoriesService.getCategories({ page: 1, limit: 1000 });
       setCategories(res.items);
     } catch (error) {
-      console.error("Failed to fetch categories:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch categories",
+        variant: "destructive",
+      })
     }
   };
 
@@ -191,7 +192,11 @@ const ProductManagement = () => {
       setProductToEdit(detail);
       setDialogOpen(true);
     } catch (error) {
-      console.error("Failed to fetch product detail", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch product detail",
+        variant: "destructive",
+      })
     }
   };
 
@@ -200,7 +205,11 @@ const ProductManagement = () => {
       const detail = await productsService.getProductById(product.id)
       setViewingProduct(detail)
     } catch (err) {
-      console.error(err)
+      toast({
+        title: "Error",
+        description: "Failed to fetch product detail",
+        variant: "destructive",
+      })
     }
   };
 
@@ -220,7 +229,11 @@ const ProductManagement = () => {
       setDeleteDialogOpen(false);
       setProductToDelete(null);
     } catch (error) {
-      console.error("Failed to delete product", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete product",
+        variant: "destructive",
+      })
     }
   };
 
@@ -253,7 +266,6 @@ const ProductManagement = () => {
   const handleProductSubmit = async (dataProduct: any) => {
     try {
       if (dialogMode === "create") {
-        console.log("🚀 SUBMIT DATA:", dataProduct);
         await productsService.createProduct(dataProduct);
         toast({
           title: "Product created",
@@ -274,7 +286,6 @@ const ProductManagement = () => {
         });
 
         if (hasInfoChange) {
-          console.log("🔥 UPDATE BODY:", data);
           await productsService.updateProduct(productToEdit.id, data);
         }
 
@@ -296,14 +307,11 @@ const ProductManagement = () => {
       setDialogOpen(false);
       setProductToEdit(null);
     } catch (error) {
-      if (error instanceof Error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-      console.log("ERROR", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   }
 

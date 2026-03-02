@@ -35,7 +35,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CreateProductFormValues, createProductSchema } from "@/schemas/product.schema";
 import { API_BASE_URL } from "@/constants/api";
-import { productsService } from "@/services/products/product.service";
+import { productsService } from "@/services/product.service";
+import { toast } from "sonner";
 
 interface ProductDialogProps {
   open: boolean;
@@ -119,12 +120,6 @@ export function ProductDialog({
   }, [register]);
 
   useEffect(() => {
-    console.log("🧠 FORM STATE UPDATE");
-    console.log("isValid:", isValid);
-    console.log("errors:", errors);
-  }, [isValid, errors]);
-
-  useEffect(() => {
     if (!open) return;
     if (mode === "create") {
       reset({
@@ -161,7 +156,7 @@ export function ProductDialog({
         weight: product.weight ?? "",
         dimensions: product.dimensions ?? "",
         basePrice: Number(product.basePrice),
-        costPrice: Number(product.costPrice), // GET không trả về costPrice
+        costPrice: Number(product.costPrice),
         discountPrice: Number(product.discountPrice ?? 0),
         stockUnits: product.stockUnits,
         lowStockAlert: product.lowStockAlert,
@@ -178,28 +173,22 @@ export function ProductDialog({
             isMain: img.isMain,
           })) ?? [],
       })
-      console.log("RESETTING WITH:", product.images);
     }
   }, [open, mode, product])
 
   const submit = async (data: CreateProductFormValues) => {
-    console.log("🚀 FINAL SUBMIT DATA:", data);
-    console.log("images instanceof Array:", Array.isArray(data.images));
-    console.log("first image instanceof File:", data.images?.[0] instanceof File);
 
     if (mode === "edit" && product) {
       try {
-        // 🚀 1. Xoá ảnh cũ trước
         await Promise.all(
           imagesToDelete.map((imageId) =>
             productsService.deleteProductImage(product.id, imageId)
           )
         );
 
-        console.log("🗑 Deleted images:", imagesToDelete);
         setImagesToDelete([]);
       } catch (err) {
-        console.error("Delete image error:", err);
+        toast.error("Failed to delete images");
       }
     }
 
@@ -219,7 +208,6 @@ export function ProductDialog({
 
       setValue("tags", [...tags, value]);
       e.currentTarget.value = "";
-      console.log("🏷 AFTER ADD:", watch("tags"));
     }
   };
 
@@ -232,7 +220,6 @@ export function ProductDialog({
       shouldValidate: true,
     });
 
-    // reset input để chọn lại cùng file vẫn trigger
     e.target.value = "";
   };
 
@@ -635,11 +622,10 @@ export function ProductDialog({
                               className="w-full h-24 object-cover"
                             />
 
-                            {/* Nút X */}
                             <button
                               type="button"
                               onClick={(e) => {
-                                e.stopPropagation(); // 🚀 quan trọng để không trigger upload
+                                e.stopPropagation();
                                 handleRemoveImage(index);
                               }}
                               className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"

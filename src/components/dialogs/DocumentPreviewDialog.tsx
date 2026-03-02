@@ -1,13 +1,14 @@
-import { Printer, Share2, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { DocumentItem } from "@/types/document.type";
-import { documentService } from "@/services/documents/document.service";
 import { API_BASE_URL } from "@/constants/api";
+import { useToast } from "@/hooks/use-toast";
+import { documentService } from "@/services/document.service";
+import { DocumentItem } from "@/types/document.type";
+import { Download, Printer, Share2 } from "lucide-react";
 
 interface DocumentPreviewDialogProps {
   open: boolean;
@@ -23,6 +24,7 @@ export function DocumentPreviewDialog({
   if (!document) return null;
 
   const previewSrc = `${API_BASE_URL}${document.fileUrl}`;
+  const { toast } = useToast();
   const handleDownload = async (doc: DocumentItem) => {
     try {
       const file = await documentService.downloadDocument(doc.id);
@@ -42,7 +44,11 @@ export function DocumentPreviewDialog({
       window.document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("DOWNLOAD ERROR:", error);
+      toast({
+        title: "Error",
+        description: "Failed to download document",
+        variant: "destructive",
+      })
     }
   };
 

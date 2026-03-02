@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Search, Plus, Pencil, Trash2, Terminal } from "lucide-react";
+import { Pagination } from "@/components/common/Pagination";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { SettingsDialog } from "@/components/dialogs/SettingsDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -11,17 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SettingsDialog } from "@/components/dialogs/SettingsDialog";
-import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
-import { useToast } from "@/hooks/use-toast";
-import { useSearchParams } from "react-router-dom";
-import { systemSettingService } from "@/services/settings/setting.service";
-import { PaginationMeta } from "@/types/pagination.type";
-import { useDebounce } from "@/hooks/useDebounce";
 import { PaginationLimit } from "@/enums/pagination.enum";
-import { Pagination } from "@/components/common/Pagination";
+import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
+import { systemSettingService } from "@/services/setting.service";
+import { PaginationMeta } from "@/types/pagination.type";
 import { SettingItem } from "@/types/setting.type";
-import { CreateSettingFormValues, UpdateSettingFormValues } from "@/schemas/setting.schema";
+import { Pencil, Plus, Search, Terminal, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const SettingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();

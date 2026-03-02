@@ -15,14 +15,12 @@ import {
 } from "@/components/ui/table";
 import { CategoryDialog } from "@/components/dialogs/CategoryDialog";
 import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
-import { useToast } from "@/hooks/use-toast";
-import { categoriesService } from "@/services/categories/categoriy.service";
+import { toast, useToast } from "@/hooks/use-toast";
+import { categoriesService } from "@/services/categoriy.service";
 
 import { Pagination } from "@/components/common/Pagination";
-import { useSearch } from "@/hooks/useSearchQuery";
 import { PaginationLimit } from "@/enums/pagination.enum";
 import { useDebounce } from "@/hooks/useDebounce";
-import { s } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
 
 interface Category {
   id: string;
@@ -79,7 +77,7 @@ const CategoryManagement = () => {
       setCategories(data.items);
       setMeta(data.meta);
     } catch (error) {
-      console.log(error);
+      toast
     } finally {
       setLoading(false);
     }
@@ -132,7 +130,6 @@ const CategoryManagement = () => {
   };
 
   const handleCategorySubmit = async (data: any) => {
-    console.log("CALL API WITH:", data);
     try {
       if (dialogMode === "create") {
         const res = await categoriesService.createCategory(data);

@@ -35,29 +35,19 @@ export const pagesService = {
     status: "PUBLISHED" | "DRAFT";
     featuredImage: File
   }) {
-    console.log("🟡 SERVICE PAYLOAD:", payload);
-    console.log("🟡 featuredImage instanceof File:", payload.featuredImage instanceof File);
-    console.log("🟡 featuredImage type:", typeof payload.featuredImage);
     const formData = new FormData()
     formData.append("title", payload.title)
     formData.append("content", payload.content)
     formData.append("slug", payload.slug)
     formData.append("status", payload.status)
     formData.append("featuredImage", payload.featuredImage)
-    // 👇 LOG TOÀN BỘ FORMDATA
-    console.log("🟢 FORMDATA CONTENT:");
-    for (const pair of formData.entries()) {
-      console.log(pair[0], pair[1]);
-    }
 
     const response = await axiosClient.post<{ success: boolean; data: ContentPage }>("/pages", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     })
-    console.log("🟢 RAW RESPONSE:", response);
     if (!response.success) {
-      console.log("🔴 RESPONSE SUCCESS FALSE:", response);
       throw new Error("Failed to create page")
     }
 
@@ -76,7 +66,6 @@ export const pagesService = {
     if (payload.content) formData.append("content", payload.content)
     if (payload.slug) formData.append("slug", payload.slug)
     if (payload.status) formData.append("status", payload.status)
-    // ✅ CHỈ append nếu là File
     if (payload.featuredImage instanceof File) {
       formData.append("featuredImage", payload.featuredImage);
     }

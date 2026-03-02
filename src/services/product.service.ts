@@ -59,11 +59,6 @@ export const productsService = {
     metaDescription: string;
     images: File[];
   }) {
-    console.log("🟡 RAW PAYLOAD:", payload);
-    console.log("🟡 images length:", payload.images?.length);
-    console.log("🟡 first image instanceof File:", payload.images?.[0] instanceof File);
-    console.log("🟡 tags:", payload.tags);
-
     const formData = new FormData();
 
     formData.append("sku", payload.sku);
@@ -76,7 +71,6 @@ export const productsService = {
     formData.append("weight", payload.weight || "");
     formData.append("dimensions", payload.dimensions || "");
 
-    // ✅ FIX: KHÔNG dùng tags[]
     payload.tags.forEach(tag => {
       formData.append("tags", tag);
     });
@@ -97,28 +91,14 @@ export const productsService = {
       formData.append("images", file);
     });
 
-    // 🔥 DEBUG FORM DATA THỰC TẾ
-    console.log("📦 FORM DATA START");
-    for (const pair of formData.entries()) {
-      console.log(pair[0], pair[1]);
-    }
-    console.log("📦 FORM DATA END");
-
     try {
       const response = await axiosClient.post("/products", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      console.log("🟢 CREATE SUCCESS:", response);
       return response.data;
     } catch (error: any) {
-      console.log("🔴 STATUS:", error.response?.status);
-
-      if (error.response?.data) {
-        console.log("🔴 FULL BACKEND RESPONSE:");
-        console.log(JSON.stringify(error.response.data, null, 2));
-      }
       throw error;
     }
   },
@@ -166,7 +146,6 @@ export const productsService = {
 
       return response.data;
     } catch (error: any) {
-      console.error("🔴 DELETE IMAGE ERROR:", error.response?.data || error);
       throw error;
     }
   },
@@ -191,7 +170,6 @@ export const productsService = {
 
       return response.data;
     } catch (error: any) {
-      console.error("🔴 UPLOAD IMAGE ERROR:", error.response?.data || error);
       throw error;
     }
   },

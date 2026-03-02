@@ -1,6 +1,4 @@
 import axiosClient from "@/services/axiosClient";
-import { get } from "http";
-import { Category } from "./../../types/category.type";
 
 export interface DashboardStats {
   totalUsers: number;
@@ -97,7 +95,7 @@ export const dashboardService = {
       success: boolean;
       data: ContentStatusItem[];
     }>("/dashboard/content-status");
-    
+
     if (!response.success) {
       throw new Error("Failed to fetch content status");
     }

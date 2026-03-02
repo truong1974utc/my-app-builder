@@ -22,12 +22,14 @@ export const documentService = {
     const response = await axiosClient.get<{
       success: boolean;
       data: GetDocumentsResponse;
+      // message: string;
     }>("/documents", { params });
     if (!response.success) {
       throw new Error("Failed to fetch documents")
     }
     return response.data
   },
+
 
   async createDocument(payload: {
     file: File;

@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
-import { Settings, Info, X, Code } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { CreateSettingFormValues, UpdateSettingFormValues } from "@/schemas/setting.schema";
+import { CreateSettingFormValues, createSettingSchema, UpdateSettingFormValues, updateSettingSchema } from "@/schemas/setting.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Code, Info, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { createSettingSchema, updateSettingSchema } from "@/schemas/setting.schema";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -30,9 +29,6 @@ export function SettingsDialog({
   onSubmit,
 }: SettingsDialogProps) {
   const isEdit = mode === "edit";
-  const [key, setKey] = useState("");
-  const [description, setDescription] = useState("");
-  const [jsonValue, setJsonValue] = useState("{\n\n}");
   const [isValidJson, setIsValidJson] = useState(true);
   const isEditing = !!setting;
 
@@ -40,7 +36,6 @@ export function SettingsDialog({
     register,
     handleSubmit,
     reset,
-    setValue,
     formState: { errors },
   } = useForm<CreateSettingFormValues | UpdateSettingFormValues>({
     resolver: zodResolver(isEdit ? updateSettingSchema : createSettingSchema),
@@ -115,6 +110,7 @@ export function SettingsDialog({
                 {...register("configKey")}
                 className="h-11 font-mono text-sm"
                 required
+                disabled
               />
             </div>
             <div className="space-y-2">

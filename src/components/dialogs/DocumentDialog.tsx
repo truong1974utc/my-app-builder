@@ -1,22 +1,23 @@
-import { useEffect, useRef, useState } from "react";
-import { FileText, Upload, Info, FilePlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import {
-  createDocumentSchema,
   CreateDocumentFormValues,
+  createDocumentSchema,
 } from "@/schemas/document.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { FilePlus, FileText, Info, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface DocumentDialogProps {
   open: boolean;
@@ -48,6 +49,7 @@ export function DocumentDialog({
   });
 
   const watchedFile = watch("file");
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +63,11 @@ export function DocumentDialog({
     try {
       await onSubmit(data);
     } catch (err) {
-      console.error("onSubmit error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to upload document",
+        variant: "destructive",
+      })
     }
   };
 
@@ -130,14 +136,12 @@ export function DocumentDialog({
               className="hidden"
               {...register("file")}
               ref={(e) => {
-                register("file").ref(e);   // giữ ref của RHF
-                fileInputRef.current = e;  // giữ ref của mình
+                register("file").ref(e);
+                fileInputRef.current = e;
               }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-
-                console.log("Selected file:", file);
 
                 setValue("file", file, { shouldValidate: true });
 

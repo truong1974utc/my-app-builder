@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { ICategory } from "@/interface/category.interface";
 import { CreateCategoryFormValues, createCategorySchema } from "@/schemas/category.schema";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
 
 interface CategoryDialogProps {
   open: boolean;
@@ -34,7 +36,7 @@ export function CategoryDialog({
   onSubmit,
 }: CategoryDialogProps) {
   const isEdit = mode === "edit";
-
+  const { toast } = useToast()
   const {
     register,
     handleSubmit,
@@ -72,7 +74,11 @@ export function CategoryDialog({
       await onSubmit(data);
       onOpenChange(false);
     } catch (err) {
-      console.log("Submit error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to save category",
+        variant: "destructive",
+      })
     }
   };
 

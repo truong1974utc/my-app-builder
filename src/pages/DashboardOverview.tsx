@@ -1,20 +1,8 @@
-import { Users, FileText, FolderOpen } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { StatCard } from "@/components/dashboard/StatCard";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import { LatestProducts } from "@/components/dashboard/LatestProducts";
 import { ContentStatus } from "@/components/dashboard/ContentStatus";
+import { LatestProducts } from "@/components/dashboard/LatestProducts";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import {
   CategorySplitItem,
   ContentStatusItem,
@@ -22,8 +10,21 @@ import {
   dashboardService,
   DashboardStats,
   LastestProduct,
-} from "@/services/dashboard/dashboard.service";
-import { useEffect, useState, useMemo } from "react";
+} from "@/services/dashboard.service";
+import { FileText, FolderOpen, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const DashboardOverview = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -32,6 +33,7 @@ const DashboardOverview = () => {
   const [categorySplit, setCategorySplit] = useState<CategorySplitItem[]>([]);
   const [latestProducts, setLatestProducts] = useState<LastestProduct[]>([]);
   const [contentStatusItem, setContentStatusItem] = useState<ContentStatusItem[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -40,7 +42,11 @@ const DashboardOverview = () => {
         const data = await dashboardService.getStats();
         setStats(data);
       } catch (error) {
-        console.error("Error fetching dashboard stats:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch dashboard stats",
+          variant: "destructive",
+        })
       } finally {
         setLoading(false);
       }
@@ -54,7 +60,11 @@ const DashboardOverview = () => {
         const data = await dashboardService.getGrowth();
         setGrowth(data);
       } catch (error) {
-        console.error("Error fetching dashboard growth data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch dashboard growth",
+          variant: "destructive",
+        })
       }
     };
     fetchGrowth();
@@ -66,7 +76,11 @@ const DashboardOverview = () => {
         const data = await dashboardService.getCategorySplit();
         setCategorySplit(data);
       } catch (error) {
-        console.error("Error fetching category split data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch category split",
+          variant: "destructive",
+        })
       }
     };
     fetchCategorySplit();
@@ -107,7 +121,11 @@ const DashboardOverview = () => {
         const data = await dashboardService.getLatestProducts();
         setLatestProducts(data);
       } catch (error) {
-        console.error("Error fetching latest products:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch latest products",
+          variant: "destructive",
+        })
       }
     };
     fetchLatestProducts();
@@ -115,12 +133,16 @@ const DashboardOverview = () => {
 
   useEffect(() => {
     const fetchContentStatus = async () => {
-      try { 
+      try {
         const data = await dashboardService.getContentStatus();
         setContentStatusItem(data);
       } catch (error) {
-        console.error("Error fetching content status:", error);
-      } 
+        toast({
+          title: "Error",
+          description: "Failed to fetch content status",
+          variant: "destructive",
+        })
+      }
     };
     fetchContentStatus();
   }, []);

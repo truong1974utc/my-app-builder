@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
-import { FileText, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Document } from "@/types/document.type";
+import { FileText, Info } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface DocumentEditDialogProps {
   open: boolean;

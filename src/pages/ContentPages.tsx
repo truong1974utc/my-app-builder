@@ -1,18 +1,10 @@
-import { useState, useEffect } from "react";
-import {
-  Search,
-  Plus,
-  ExternalLink,
-  Pencil,
-  Trash2,
-  Image,
-  Globe,
-  Calendar,
-} from "lucide-react";
+import { Pagination } from "@/components/common/Pagination";
+import { ContentPageDialog } from "@/components/dialogs/ContentPageDialog";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -21,15 +13,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ContentPageDialog } from "@/components/dialogs/ContentPageDialog";
-import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
-import { Pagination } from "@/components/common/Pagination";
-import { useToast } from "@/hooks/use-toast";
-import { pagesService } from "@/services/pages/page.service";
-import { ContentPage } from "@/types/page.type";
-import { useDebounce } from "@/hooks/useDebounce";
-import { useSearchParams } from "react-router-dom";
 import { PaginationLimit } from "@/enums/pagination.enum";
+import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
+import { pagesService } from "@/services/page.service";
+import { ContentPage } from "@/types/page.type";
+import {
+  Calendar,
+  ExternalLink,
+  Globe,
+  Image,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const ContentPages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,10 +39,6 @@ const ContentPages = () => {
   const debouncedSearch = useDebounce(searchValue, 500);
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
-  const search = searchParams.get("search") || undefined;
-  const sortBy = searchParams.get("sortBy") || undefined;
-  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC"
-  const status = searchParams.get("status") as "PUBLISHED" | "DRAFT";
   const [mode, setMode] = useState<"create" | "edit">("create");
 
   useEffect(() => {
@@ -78,7 +74,11 @@ const ContentPages = () => {
       setPages(data.items)
       setMeta(data.meta)
     } catch (error) {
-      console.error("Failed to fetch pages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch pages",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false);
     }
@@ -120,7 +120,6 @@ const ContentPages = () => {
   };
 
   const handleEditClick = (page: ContentPage) => {
-    console.log("CLICK EDIT PAGE:", page);
     setMode("edit")
     setSelectedPage(page);
     setDialogOpen(true);
@@ -132,12 +131,6 @@ const ContentPages = () => {
   };
 
   const handleSubmit = async (data: any) => {
-    console.log("===== SUBMIT START =====");
-    console.log("ID:", selectedPage?.id);
-    console.log("TITLE:", data.title);
-    console.log("FEATURED IMAGE:", data.featuredImage);
-    console.log("IS FILE:", data.featuredImage instanceof File);
-    console.log("TYPE:", typeof data.featuredImage);
     try {
       if (mode === "create") {
         await pagesService.createPage(data)
@@ -147,7 +140,6 @@ const ContentPages = () => {
         });
       } else {
         await pagesService.updatePage(selectedPage?.id, data)
-        console.log("EDIT DOCUMENT:", data);
         toast({
           title: "Page updated",
           description: `${data.title} has been updated.`,
@@ -158,7 +150,6 @@ const ContentPages = () => {
       setMode("create")
       fetchPages()
     } catch (error) {
-      console.error("Failed to save page:", error);
       toast({
         title: "Error",
         description: "Failed to save page. Please try again.",
@@ -178,7 +169,6 @@ const ContentPages = () => {
       setPageToDelete(null)
       fetchPages()
     } catch (error) {
-      console.error("Failed to delete page:", error);
       toast({
         title: "Error",
         description: "Failed to delete page. Please try again.",

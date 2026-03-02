@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Product, ProductDetail } from "@/types/product.type";
 import { API_BASE_URL } from "@/constants/api";
 import { useEffect } from "react";
-import { productsService } from "@/services/products/product.service";
+import { productsService } from "@/services/product.service";
 
 interface ProductCardProps {
   product: Product;

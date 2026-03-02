@@ -1,6 +1,5 @@
-import { Search, Filter, ChevronDown, ChevronUp } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -8,9 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
 import { Category } from "@/types/category.type";
-import { GetProductsParams } from "@/services/products/product.service";
+import { ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { useState } from "react";
 
 interface UIFilters {
   categories: string;
@@ -55,7 +54,7 @@ export function ProductFilters({
   categories,
   onFiltersChange,
 }: ProductFiltersProps) {
-  const [expanded, setExpanded] = useState(true); // mở filter cho mày thấy UI
+  const [expanded, setExpanded] = useState(true);
 
   const [filters, setFilters] = useState<UIFilters>({
     categories: "",
@@ -71,7 +70,6 @@ export function ProductFilters({
     const updated = { ...filters, [key]: value };
     setFilters(updated);
 
-    // tạm thời vẫn bắn ra ngoài
     onFiltersChange(updated);
   };
 

@@ -1,20 +1,23 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { User } from "@/types/user.type";
+import { TUser } from "@/types/user.type";
 import { authApi } from "@/services/auth.api";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
-  user: User | null;
+  user: TUser | null;
   login: (data: any) => void;
   logout: () => void;
-  setUser: (user: User | null) => void;
+  setUser: (user: TUser | null) => void;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+
 export const AuthProvider = ({ children }: any) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<TUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   const login = (data: any) => {
     localStorage.setItem("accessToken", data.data.accessToken);
     localStorage.setItem("refreshToken", data.data.refreshToken);
@@ -31,9 +34,7 @@ export const AuthProvider = ({ children }: any) => {
     const initAuth = async () => {
       const refreshToken = localStorage.getItem("refreshToken");
 
-      // 🔥 QUAN TRỌNG: Không có refreshToken thì khỏi gọi me
       if (!refreshToken) {
-        console.log("🔴 No refreshToken → skip init");
         setLoading(false);
         return;
       }
@@ -42,8 +43,12 @@ export const AuthProvider = ({ children }: any) => {
         const res = await authApi.me();
         setUser(res.data);
       } catch (err) {
-        console.log("🔴 INIT AUTH FAILED");
         setUser(null);
+        toast({
+          title: "Error",
+          description: "Failed to fetch user",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }

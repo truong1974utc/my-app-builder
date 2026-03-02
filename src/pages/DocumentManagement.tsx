@@ -1,13 +1,8 @@
-import { useEffect, useState } from "react";
-import {
-  Upload,
-  Eye,
-  Pencil,
-  Trash2,
-  Download,
-  FileText,
-  FileSpreadsheet,
-} from "lucide-react";
+import { Pagination } from "@/components/common/Pagination";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { DocumentDialog } from "@/components/dialogs/DocumentDialog";
+import { DocumentEditDialog } from "@/components/dialogs/DocumentEditDialog";
+import { DocumentPreviewDialog } from "@/components/dialogs/DocumentPreviewDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,19 +14,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DocumentDialog } from "@/components/dialogs/DocumentDialog";
-import { DocumentPreviewDialog } from "@/components/dialogs/DocumentPreviewDialog";
-import { DocumentEditDialog } from "@/components/dialogs/DocumentEditDialog";
-import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
-import { Pagination } from "@/components/common/Pagination";
-import { usePagination } from "@/hooks/usePagination";
-import { useToast } from "@/hooks/use-toast";
-import { documentService } from "@/services/documents/document.service";
-import { Document, DocumentItem } from "@/types/document.type";
-import { useSearchParams } from "react-router-dom";
-import { useDebounce } from "@/hooks/useDebounce";
 import { PaginationLimit } from "@/enums/pagination.enum";
+import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
 import { CreateDocumentFormValues } from "@/schemas/document.schema";
+import { documentService } from "@/services/document.service";
+import { Document, DocumentItem } from "@/types/document.type";
+import {
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Pencil,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const DocumentManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -220,14 +219,9 @@ const DocumentManagement = () => {
   };
 
   const handleDownload = async (doc: Document) => {
-    console.log("CLICK DOWNLOAD:", doc.id);
-
     try {
       const blob = await documentService.downloadDocument(doc.id);
-      console.log("BLOB RECEIVED:", blob);
-
       const url = window.URL.createObjectURL(blob);
-      console.log("BLOB URL:", url);
 
       const link = document.createElement("a");
       link.href = url;
@@ -238,7 +232,11 @@ const DocumentManagement = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("DOWNLOAD ERROR:", error);
+      toast({
+        title: "Error",
+        description: "Failed to download document.",
+        variant: "destructive",
+      });
     }
   };
 

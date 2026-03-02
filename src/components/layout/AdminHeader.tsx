@@ -1,22 +1,23 @@
-import { ChevronDown, Menu, Route } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { RoutePaths } from "@/config/route";
 import { useAuth } from "@/contexts/AuthContext";
+import { ERole } from "@/enums/role.enum";
+import { ChevronDown, Menu } from "lucide-react";
+import { Link } from "react-router-dom";
 interface AdminHeaderProps {
   onMenuClick?: () => void;
 }
-import { Link} from "react-router-dom";
-import { RoutePaths } from "@/config/route";
 
 export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
   const { logout, user } = useAuth();
-  const roleLabel = user?.role === "SUPER_ADMIN" ? "Super Admin" : "Admin";
+  const roleLabel = user?.role === ERole.SUPER_ADMIN ? "Super Admin" : "Admin";
   const avatarLetter = user?.fullName ? user.fullName.charAt(0).toUpperCase() : "A";
   const email = user?.email || "";
   return (

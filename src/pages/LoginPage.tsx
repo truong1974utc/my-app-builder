@@ -1,36 +1,42 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Mail, Lock } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { authApi } from "@/services/auth.api";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth()
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("SUBMIT CLICKED", { email, password });
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const res = await authApi.login({ email, password });
-      console.log("Login successful:", res);
       login(res);
-      console.log("CONSOLE LOGGING AUTH CONTEXT");
       navigate("/");
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed. Please try again.");
-      console.log("🔴 LOGIN ERROR:", err)
+      toast({
+        title: "Login failed",
+        description: "Invalid email or password.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -88,8 +94,8 @@ const LoginPage = () => {
           </div>
 
           {/* Submit Button */}
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full h-12 text-base font-medium"
             disabled={isLoading}
           >
@@ -99,14 +105,14 @@ const LoginPage = () => {
 
         {/* Footer Links */}
         <div className="mt-6 flex items-center justify-center gap-4 border-t border-border pt-6">
-          <button 
+          <button
             type="button"
             className="text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             Forgot password?
           </button>
           <span className="text-muted-foreground">|</span>
-          <button 
+          <button
             type="button"
             className="text-sm text-muted-foreground hover:text-primary transition-colors"
           >

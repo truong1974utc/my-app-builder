@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { Search, UserPlus, Pencil, Trash2 } from "lucide-react";
+import { Pagination } from "@/components/common/Pagination";
+import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
+import { UserDialog } from "@/components/dialogs/UserDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -13,29 +14,30 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { UserDialog } from "@/components/dialogs/UserDialog";
-import { DeleteDialog } from "@/components/dialogs/DeleteDialog";
-import { User } from "@/types/user.type";
-import { Pagination } from "@/components/common/Pagination";
-import { usersService } from "@/services/users/user.service";
-import { PaginationMeta } from "@/types/pagination.type";
 import { PaginationLimit } from "@/enums/pagination.enum";
-import { usePagination } from "@/hooks/usePagination";
-import { useSearchParams } from "react-router-dom";
-import { useSearch } from "@/hooks/useSearchQuery";
-import { useSort } from "@/hooks/useSortQuery";
-import { s } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
-import { set } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
+import { usersService } from "@/services/user.service";
+import { PaginationMeta } from "@/types/pagination.type";
+import { TUser } from "@/types/user.type";
+import { Pencil, Search, Trash2, UserPlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const UserManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<TUser[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [searchValue, setSearchValue] = useState(
     searchParams.get("search") || "",
   );
   const debouncedSearch = useDebounce(searchValue, 500);
+  const [selectedUser, setSelectedUser] = useState<TUser | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<TUser | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -46,7 +48,7 @@ const UserManagement = () => {
       params.delete("search");
     }
 
-    params.set("page", "1"); // reset page khi search
+    params.set("page", "1");
 
     setSearchParams(params);
   }, [debouncedSearch]);
@@ -69,13 +71,9 @@ const UserManagement = () => {
 
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || PaginationLimit.TEN;
-  const search = searchParams.get("search") || undefined;
-  const sortBy = searchParams.get("sortBy") || undefined;
-  const sortOrder = searchParams.get("sortOrder") as "ASC" | "DESC" | undefined;
-  const role = searchParams.get("role") || undefined;
-  const status = searchParams.get("status") || undefined;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const { toast } = useToast();
 
   const fetchUsers = async () => {
     try {
@@ -86,7 +84,11 @@ const UserManagement = () => {
       setUsers(data.items);
       setMeta(data.meta);
     } catch (error) {
-      console.log("FETCH ERROR", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false);
     }
@@ -116,16 +118,13 @@ const UserManagement = () => {
       await fetchUsers();
 
     } catch (error) {
-      console.log("ERROR", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive",
+      })
     }
   }
-
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
@@ -147,7 +146,7 @@ const UserManagement = () => {
     setDialogOpen(true);
   };
 
-  const handleEditUser = (user: User) => {
+  const handleEditUser = (user: TUser) => {
     setDialogMode("edit");
     setSelectedUser(user);
     setDialogOpen(true);

@@ -7,9 +7,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ContentStatusItem } from "@/services/dashboard/dashboard.service";
+import { ContentStatusItem } from "@/services/dashboard.service";
 import { Link } from "react-router-dom";
 import { RoutePaths } from "@/config/route";
+import { EStatusPage } from "@/enums/status.enum";
 
 interface Props {
   pages: ContentStatusItem[];
@@ -44,7 +45,7 @@ export const ContentStatus = ({ pages }: Props) => {
             </div>
 
             <Badge
-              variant={page.status === "PUBLISHED" ? "default" : "secondary"}
+              variant={page.status === EStatusPage.PUBLISHED ? "default" : "secondary"}
             >
               {page.status}
             </Badge>

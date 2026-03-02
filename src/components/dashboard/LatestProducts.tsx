@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { RoutePaths } from "@/config/route";
 
-import { LastestProduct } from "@/services/dashboard/dashboard.service";
+import { LastestProduct } from "@/services/dashboard.service";
 import { Link } from "react-router-dom";
 import { API_BASE_URL } from "@/constants/api";
 
