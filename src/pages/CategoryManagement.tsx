@@ -52,7 +52,7 @@ const CategoryManagement = () => {
     else {
       params.delete("search");
     }
-    params.set("page", "1"); // Reset to first page on search
+    params.set("page", "1");
     setSearchParams(params);
   }, [debouncedSearch]);
 

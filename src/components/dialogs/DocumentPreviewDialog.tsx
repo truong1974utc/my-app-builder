@@ -32,14 +32,14 @@ export function DocumentPreviewDialog({
 
       const url = window.URL.createObjectURL(blob);
 
-      const link = window.document.createElement("a"); // 👈 FIX
+      const link = window.document.createElement("a");
       link.href = url;
       link.download = doc.fileName || "downloaded-file";
 
-      window.document.body.appendChild(link); // 👈 FIX
+      window.document.body.appendChild(link);
       link.click();
 
-      window.document.body.removeChild(link); // 👈 FIX
+      window.document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("DOWNLOAD ERROR:", error);

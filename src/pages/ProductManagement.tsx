@@ -142,7 +142,7 @@ const ProductManagement = () => {
     } catch (error) {
       console.error("Failed to fetch products:", error);
     } finally {
-      // setLoading(false);
+      setLoading(false);
     }
   };
   useEffect(() => {
@@ -171,7 +171,6 @@ const ProductManagement = () => {
 
   const { toast } = useToast();
 
-  /** ---------------- DIALOG STATE ---------------- */
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -179,7 +178,6 @@ const ProductManagement = () => {
   const [viewingProduct, setViewingProduct] = useState<ProductDetail | null>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
 
-  /** ---------------- CRUD HANDLERS ---------------- */
   const handleAddProduct = () => {
     setDialogMode("create");
     setProductToEdit(null);
@@ -241,7 +239,6 @@ const ProductManagement = () => {
       }
     });
 
-    // reset page khi filter thay đổi
     if (!("page" in updates)) {
       params.set("page", "1");
     }
@@ -272,13 +269,9 @@ const ProductManagement = () => {
           (img: any) => img instanceof File
         ) as File[];
 
-        // 🔥 KIỂM TRA có thay đổi info không
         const hasInfoChange = Object.keys(data).some((key) => {
           return data[key] !== (productToEdit as any)[key];
         });
-
-
-        console.log("🚀 SUBMIT DATA:", data);
 
         if (hasInfoChange) {
           console.log("🔥 UPDATE BODY:", data);

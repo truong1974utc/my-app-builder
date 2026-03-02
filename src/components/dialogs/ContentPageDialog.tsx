@@ -111,7 +111,7 @@ export function ContentPageDialog({
     console.log("📁 FILE:", file);
     console.log("📁 instanceof File:", file instanceof File);
 
-    setValue("featuredImage", file); // 🔥 LƯU FILE, KHÔNG LƯU BLOB STRING
+    setValue("featuredImage", file);
   };
 
   const handleEditorInput = () => {

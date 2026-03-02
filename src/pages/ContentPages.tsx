@@ -52,7 +52,7 @@ const ContentPages = () => {
     else {
       params.delete("search");
     }
-    params.set("page", "1"); // Reset to first page on search
+    params.set("page", "1");
     setSearchParams(params);
   }, [debouncedSearch]);
 
@@ -120,7 +120,7 @@ const ContentPages = () => {
   };
 
   const handleEditClick = (page: ContentPage) => {
-    console.log("CLICK EDIT PAGE:", page); // 👈 NHÉT Ở ĐÂY
+    console.log("CLICK EDIT PAGE:", page);
     setMode("edit")
     setSelectedPage(page);
     setDialogOpen(true);
@@ -194,7 +194,6 @@ const ContentPages = () => {
         description="System management and detailed overview."
       />
 
-      {/* Search and Add */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <div className="relative max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

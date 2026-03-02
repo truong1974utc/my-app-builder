@@ -69,7 +69,6 @@ export function ProductDialog({
     const currentImages = watch("images") || [];
     const imageToRemove = currentImages[indexToRemove];
 
-    // Nếu là ảnh cũ từ API → lưu id để xoá backend
     if (!(imageToRemove instanceof File) && imageToRemove?.id) {
       setImagesToDelete((prev) => [...prev, imageToRemove.id]);
     }
